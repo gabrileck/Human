@@ -175,7 +175,7 @@ export default function Hero({ images }) {
           <li><a class="link" href="https://realizehuman.com.br/blog">Conteúdos</a></li>
           <li><a class="link" href="https://vagas.realizehuman.com.br">Portal de vagas</a></li>
         </ul>
-        <a class="pill" href={WA} target="_blank" rel="noopener">Fale conosco</a>
+        <a class="pill" href={WA} target="_blank" rel="noopener noreferrer">Fale conosco</a>
       </nav>
 
       <div class="content" data-fade>
@@ -190,7 +190,7 @@ export default function Hero({ images }) {
           A Realize Human estrutura liderança, cultura e contratação. Com método, não com achismo.
         </p>
         <div class="ctas" data-hero-in data-in="ctas">
-          <a class="btn btn-primary" href={WA} target="_blank" rel="noopener">
+          <a class="btn btn-primary" href={WA} target="_blank" rel="noopener noreferrer">
             Quero o diagnóstico gratuito
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           </a>
