@@ -1,0 +1,59 @@
+---
+import { Font } from 'astro:assets';
+import '../styles/global.css';
+
+interface Props {
+	title?: string;
+	description?: string;
+}
+const {
+	title = 'Realize Human — Consultoria Estratégica em Gestão de Pessoas',
+	description = 'A Realize Human estrutura liderança, cultura e contratação. Com método, não com achismo.',
+} = Astro.props;
+const base = import.meta.env.BASE_URL;
+---
+
+<!doctype html>
+<html lang="pt-BR">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>{title}</title>
+		<meta name="description" content={description} />
+		<link rel="icon" type="image/svg+xml" href={`${base}favicon.svg`} />
+		<meta name="generator" content={Astro.generator} />
+
+		<!-- fontes do próprio site; pré-carregadas só as da tela de carregamento e da 1ª dobra -->
+		<Font cssVariable="--font-serif" preload />
+		<Font cssVariable="--font-sans" preload={[{ weight: '400' }, { weight: '600' }]} />
+		<Font cssVariable="--font-grotesk" preload />
+		<Font cssVariable="--font-mono" preload={[{ weight: '400' }]} />
+		<Font cssVariable="--font-display" />
+
+		<!-- a página injeta aqui os preloads das imagens da 1ª dobra -->
+		<slot name="head" />
+
+		<!--
+			Roda antes do primeiro desenho:
+			- `js`: liga os estados iniciais "escondidos" das animações e a tela de carregamento;
+			- `is-loading`: trava o scroll enquanto a tela de carregamento está aberta.
+			Redes de segurança: se o JS da tela de carregamento falhar, ela some em 10 s;
+			se o hero não hidratar, o conteúdo aparece sem animação. Nada fica preso/invisível.
+		-->
+		<script is:inline>
+			const html = document.documentElement;
+			html.classList.add('js', 'is-loading');
+			setTimeout(() => {
+				if (!html.classList.contains('site-go')) {
+					html.classList.add('loader-fallback', 'site-go');
+					html.classList.remove('is-loading');
+					window.dispatchEvent(new Event('site:go'));
+				}
+			}, 10000);
+			setTimeout(() => { if (!html.classList.contains('hero-ready')) html.classList.add('anim-fallback'); }, 12000);
+		</script>
+	</head>
+	<body>
+		<slot />
+	</body>
+</html>

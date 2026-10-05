@@ -1,0 +1,97 @@
+/* ---------- DOBRA 3: MÉTODO ---------- */
+.metodo {
+  --cyan: #00d1ff;
+  position: relative; z-index: 3;
+  /* sobe por cima da última tela da dobra 3D, como uma cortina com a borda em curva */
+  margin-top: -100vh; margin-top: -100svh;
+  min-height: 100vh; min-height: 100svh;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: clamp(96px, 14vh, 150px) clamp(16px, 5vw, 72px) clamp(96px, 14vh, 140px);
+  color: #fff; text-align: center;
+  background:
+    radial-gradient(circle at 14% 8%, rgba(0,209,255,.16), transparent 32%),
+    radial-gradient(circle at 88% 78%, rgba(147,39,143,.22), transparent 40%),
+    linear-gradient(180deg, #001a33 0%, #00152b 50%, #001a33 100%);
+  font-family: var(--font-display);
+  overflow: hidden;
+}
+.metodo-kicker {
+  color: var(--cyan); font-size: 9px; font-weight: 900; letter-spacing: .8em;
+  text-transform: uppercase; margin-right: -.8em;   /* compensa o espaçamento da última letra */
+}
+.metodo h2 {
+  font-size: clamp(32px, 3.6vw, 48px); font-weight: 900; font-style: italic;
+  letter-spacing: .12em; text-transform: uppercase; line-height: 1;
+}
+.mask { display: block; overflow: hidden; padding: 0 .2em .08em; }
+.mask > * { display: block; }
+.mask + .mask { margin-top: 14px; }
+
+/* letra em contorno → preenchida. --f (0 a 1) é animada pelo GSAP letra por letra */
+.metodo h2 .ch {
+  --f: 1;
+  display: inline-block;
+  color: rgba(255, 255, 255, var(--f));
+  -webkit-text-stroke: 1px rgba(255, 255, 255, calc(.6 - var(--f) * .6));
+}
+.metodo-rule { width: 50px; height: 1px; margin: 26px auto 0; background: var(--cyan); opacity: .7; }
+
+.metodo-grid {
+  max-width: 1152px; margin: clamp(64px, 9vh, 88px) auto 0;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px;
+}
+.m-card {
+  position: relative; height: 288px; padding: 40px 24px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 48px;
+  transition: background .5s, border-color .5s;
+}
+.m-card:hover { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.18); }
+/* o hover só mexe no transform depois da entrada do GSAP terminar (senão os dois brigam) */
+.m-card.entered { transition: transform .7s cubic-bezier(.2,.8,.2,1), background .5s, border-color .5s; }
+.m-card.entered:hover { transform: translateY(-8px); }
+.m-figure {
+  position: absolute; top: -40px; right: -16px; width: 96px; height: 96px;
+  pointer-events: none;
+  transition: transform .7s cubic-bezier(.2,.8,.2,1);
+}
+.m-figure img { display: block; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 18px 22px rgba(0,0,0,.5)); }
+.m-card:hover .m-figure { transform: scale(1.1) rotate(-4deg); }
+.m-icon {
+  width: 64px; height: 64px; margin-bottom: 32px; border-radius: 20px;
+  display: grid; place-items: center;
+  background: rgba(255,255,255,.05); color: var(--c);
+  transition: background .5s, color .5s, box-shadow .5s;
+}
+.m-icon svg { width: 32px; height: 32px; }
+.m-card:hover .m-icon { background: #fff; color: #001a33; box-shadow: 0 0 30px rgba(255,255,255,.2); }
+.m-card h3 { font-size: 14px; font-weight: 900; letter-spacing: .2em; line-height: 1.25; text-transform: uppercase; max-width: 190px; }
+.m-card::after {   /* tracinho de luz na base */
+  content: ""; position: absolute; bottom: 32px; left: 50%; width: 48px; height: 3px; border-radius: 3px;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  opacity: .35; transition: width 1s, opacity 1s;
+}
+.m-card:hover::after { width: 80px; opacity: 1; }
+
+/* ---------- ESTADO INICIAL DA ENTRADA (o GSAP leva até o estado final) ---------- */
+.js .metodo .mask > * { transform: translateY(110%); }
+.js .metodo h2 .ch { --f: 0; }
+.js .metodo .metodo-rule { transform: scaleX(0); }
+.js .metodo .m-card { opacity: 0; visibility: hidden; }
+
+@media (max-width: 1024px) {
+  .metodo-grid { grid-template-columns: repeat(2, 1fr); row-gap: 64px; max-width: 680px; }
+}
+@media (max-width: 600px) {
+  .metodo-grid { grid-template-columns: 1fr; row-gap: 56px; max-width: 360px; }
+  .m-card { height: 240px; }
+  .m-figure { width: 84px; height: 84px; right: -6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .js .metodo .mask > *, .js .metodo .metodo-rule { transform: none; }
+  .js .metodo h2 .ch { --f: 1; }
+  .js .metodo .m-card { opacity: 1; visibility: visible; }
+}
