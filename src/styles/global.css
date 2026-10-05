@@ -1,0 +1,21 @@
+:root {
+  --ink: #1b1d22;
+  --ink-soft: #4a4f58;
+  --wine: #5b2a30;
+  --teal: #1e4f5c;
+  --rust: #b4432d;
+  --gold: #c49a45;
+  --paper: #f4f2ee;
+  --wall: #9aa3ab;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font-sans);
+  color: var(--ink);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+img { display: block; max-width: none; user-select: none; -webkit-user-drag: none; }
+picture { display: contents; }   /* o <img> dentro do <picture> se comporta como se estivesse direto na camada */
