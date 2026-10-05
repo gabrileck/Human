@@ -1,0 +1,121 @@
+---
+// Tela de carregamento: HTML + CSS estáticos (aparecem no primeiro desenho, sem esperar JS).
+// O script em lib/preloader.js mede o carregamento, monta o logo 3D e faz a saída.
+---
+
+<div class="pl" id="preloader" role="progressbar" aria-label="Carregando o site" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+	<div class="pl-glow" aria-hidden="true"></div>
+	<canvas class="pl-canvas" id="pl-canvas" aria-hidden="true"></canvas>
+
+	<!-- antes do 3D chegar: um anel girando no lugar do logo -->
+	<div class="pl-ring" aria-hidden="true"></div>
+
+	<header class="pl-top pl-ui">
+		<span class="pl-brand">Realize Human<i>.</i></span>
+		<span class="pl-meta">Consultoria de RH estratégico</span>
+	</header>
+
+	<div class="pl-bottom">
+		<p class="pl-tag pl-ui">Estruturando<br />pessoas, liderança<br />e cultura.</p>
+		<div class="pl-count pl-ui"><span id="pl-num">0</span><sup>%</sup></div>
+	</div>
+
+	<div class="pl-line pl-ui" aria-hidden="true"><i id="pl-bar"></i></div>
+</div>
+
+<script>
+	import '../lib/preloader.js';
+</script>
+
+<style is:global>
+	/* só existe com JS (sem JS o site aparece direto) */
+	.pl { display: none; }
+	.js .pl {
+		display: block;
+		position: fixed; inset: 0; z-index: 100;
+		background: radial-gradient(120% 90% at 50% 38%, #0b1d2c 0%, #050b12 55%, #030609 100%);
+		color: #eef4f2;
+		overflow: hidden;
+	}
+	.loader-fallback .pl { display: none !important; }
+	html.is-loading { overflow: hidden; }
+
+	/* brilho colorido suave atrás do logo, com as cores das peças */
+	.pl-glow {
+		position: absolute; left: 50%; top: 40%; width: min(70vw, 760px); aspect-ratio: 1;
+		transform: translate(-50%, -50%);
+		background:
+			radial-gradient(closest-side at 30% 35%, rgba(255, 79, 140, .22), transparent),
+			radial-gradient(closest-side at 70% 30%, rgba(0, 209, 255, .22), transparent),
+			radial-gradient(closest-side at 40% 75%, rgba(0, 255, 148, .14), transparent),
+			radial-gradient(closest-side at 72% 70%, rgba(255, 160, 40, .16), transparent);
+		filter: blur(30px);
+		opacity: .8;
+		animation: pl-breathe 4s ease-in-out infinite alternate;
+	}
+	@keyframes pl-breathe { to { transform: translate(-50%, -50%) scale(1.08) rotate(25deg); opacity: 1; } }
+
+	.pl-canvas {
+		position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+		opacity: 0; transition: opacity .8s ease;
+	}
+	.pl.has-3d .pl-canvas { opacity: 1; }
+
+	.pl-ring {
+		position: absolute; left: 50%; top: 40%; width: 64px; height: 64px; margin: -32px 0 0 -32px;
+		border-radius: 50%;
+		border: 1px solid rgba(238, 244, 242, .15); border-top-color: rgba(238, 244, 242, .8);
+		animation: pl-spin 1s linear infinite;
+		transition: opacity .4s ease;
+	}
+	.pl.has-3d .pl-ring { opacity: 0; }
+	@keyframes pl-spin { to { transform: rotate(360deg); } }
+
+	.pl-top {
+		position: absolute; top: 0; left: 0; right: 0;
+		display: flex; justify-content: space-between; align-items: baseline;
+		padding: 28px clamp(16px, 5vw, 72px);
+	}
+	.pl-brand { font-family: var(--font-serif); font-size: 26px; letter-spacing: -.01em; }
+	.pl-brand i { color: #ff6b8a; }
+	.pl-meta {
+		font-family: var(--font-mono); font-size: 11px; letter-spacing: .2em; text-transform: uppercase;
+		color: rgba(238, 244, 242, .55);
+	}
+
+	.pl-bottom {
+		position: absolute; left: 0; right: 0; bottom: 34px;
+		display: flex; justify-content: space-between; align-items: flex-end;
+		padding: 0 clamp(16px, 5vw, 72px);
+	}
+	.pl-tag {
+		font-family: var(--font-mono); font-size: 11px; line-height: 1.8; letter-spacing: .18em;
+		text-transform: uppercase; color: rgba(238, 244, 242, .55);
+		padding-bottom: 14px;
+	}
+	.pl-count {
+		font-family: var(--font-grotesk); font-weight: 500;
+		font-size: clamp(72px, 13vw, 200px); line-height: .8; letter-spacing: -.05em;
+		font-variant-numeric: tabular-nums;   /* números com a mesma largura: o contador não "treme" */
+	}
+	.pl-count sup { font-size: .28em; vertical-align: top; margin-left: .08em; letter-spacing: 0; color: rgba(238, 244, 242, .55); }
+
+	.pl-line {
+		position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+		background: rgba(238, 244, 242, .08);
+	}
+	.pl-line i {
+		position: absolute; inset: 0; transform-origin: left; transform: scaleX(0);
+		background: linear-gradient(90deg, #ff4f8c, #00d1ff 35%, #00ff94 65%, #ffa028);
+	}
+
+	@media (max-width: 700px) {
+		.pl-meta { display: none; }
+		.pl-glow, .pl-ring { top: 36%; }
+		.pl-bottom { flex-direction: column; align-items: flex-start; gap: 18px; }
+		.pl-tag { padding-bottom: 0; }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.pl-glow, .pl-ring { animation: none; }
+	}
+</style>
