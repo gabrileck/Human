@@ -4,10 +4,10 @@
   --muted: rgba(238, 244, 242, .58);
   --line: rgba(238, 244, 242, .16);
   --gutter: clamp(16px, 5.5vw, 88px);
-  --cut: 14vh;                                   /* entrada em diagonal sobre o hero */
   position: relative; z-index: 2;
+  /* sobe por baixo do hero; a borda diagonal é o recorte do HERO (ver hero.css) —
+     recortar esta seção de 7 telas obrigava o navegador a repintar uma máscara gigante */
   margin-top: calc(var(--cut) * -1);
-  clip-path: polygon(0 var(--cut), 100% 0, 100% 100%, 0 100%);
   background: #04080a; color: var(--fg);
   font-family: var(--font-mono);
   height: 740vh;                                 /* o JS ajusta exato; isto evita "pulo" antes de carregar */
@@ -68,7 +68,6 @@
 .t3d-loader.done { opacity: 0; visibility: hidden; }
 
 @media (max-width: 820px) {
-  .t3d { --cut: 8vh; }
   .t3d-title { top: 30%; font-size: clamp(38px, 11vw, 64px); }
   .t3d-eyebrow { top: calc(30% - 110px); }
   .t3d-desc { top: auto; bottom: 92px; transform: none; left: var(--gutter); right: var(--gutter); width: auto; }

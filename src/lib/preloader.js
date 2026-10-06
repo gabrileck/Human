@@ -14,6 +14,7 @@ const root = document.getElementById('preloader');
 if (root) run();
 
 function run() {
+  window.__glReserved = true;   // o WebGL compartilhado (lib/gl.js) fica com a tela de carregamento primeiro
   const canvas = root.querySelector('#pl-canvas');
   const $num = root.querySelector('#pl-num');
   const $bar = root.querySelector('#pl-bar');
@@ -27,15 +28,16 @@ function run() {
   const t0 = performance.now();
 
   /* ---------------- o que estamos carregando (pesos somam 1) ---------------- */
-  const parts = { model: 0, three: 0, images: 0, fonts: 0 };
-  const weight = { model: 0.45, three: 0.2, images: 0.25, fonts: 0.1 };
+  const parts = { model: 0, three: 0, images: 0, fonts: 0, scene3d: 0 };
+  const weight = { model: 0.4, three: 0.15, images: 0.2, fonts: 0.1, scene3d: 0.15 };
   const real = () => Object.keys(parts).reduce((sum, k) => sum + parts[k] * weight[k], 0);
 
   const model = getModelBuffer((p) => { parts.model = p; });
   const sceneModule = import('./preloader-scene.js').then((m) => { parts.three = 1; return m; });
 
-  // imagens: as do hero (a versão que o navegador escolheu no srcset) + os bonequinhos do método
-  const imgs = [...document.querySelectorAll('.hero img, .metodo img')];
+  // imagens: as do hero (a versão que o navegador escolheu no srcset), os bonequinhos do método
+  // e as capas dos vídeos — decodificadas agora, para não pesarem na hora da rolagem
+  const imgs = [...document.querySelectorAll('.hero img, .metodo img, .palco img')];
   let doneImgs = 0;
   const images = Promise.all(imgs.map((img) => {
     img.loading = 'eager';
@@ -46,6 +48,13 @@ function run() {
 
   const fonts = (document.fonts?.ready ?? Promise.resolve()).then(() => { parts.fonts = 1; });
 
+  // a dobra 3D é montada e "aquecida" AGORA, durante esta tela — assim nada pesado
+  // acontece depois, no meio da rolagem (era isso que travava ao descer rápido)
+  const scene3d = !document.getElementById('dobra3d') || window.__dobra3dReady
+    ? Promise.resolve()
+    : new Promise((r) => addEventListener('dobra3d:ready', r, { once: true }));
+  scene3d.then(() => { parts.scene3d = 1; });
+
   // a cena 3D da tela de carregamento entra assim que three.js + modelo chegam
   let scene = null;
   Promise.all([sceneModule, model])
@@ -54,7 +63,7 @@ function run() {
     .catch(() => {});   // sem WebGL: a tela funciona só com o contador
 
   let allDone = false;
-  Promise.allSettled([model, sceneModule, images, fonts]).then(() => {
+  Promise.allSettled([model, sceneModule, images, fonts, scene3d]).then(() => {
     Object.keys(parts).forEach((k) => { parts[k] = 1; });
     allDone = true;
   });
@@ -90,7 +99,12 @@ function run() {
 
   function finish() {
     cancelAnimationFrame(raf);
-    scene?.dispose();
+    if (scene) scene.dispose();   // devolve o WebGL compartilhado para a dobra 3D
+    else {                        // a cena 3D da tela não chegou a existir: libera a reserva assim mesmo
+      window.__glReserved = false;
+      if (window.__glShared) window.__glShared.owner = null;
+      window.dispatchEvent(new Event('gl:handoff'));
+    }
     root.remove();
     html.classList.remove('is-loading');
     html.classList.add('site-ready');

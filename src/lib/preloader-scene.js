@@ -1,10 +1,9 @@
 import {
-  Box3, DirectionalLight, Euler, Group, MeshPhysicalMaterial, NeutralToneMapping,
-  PMREMGenerator, PerspectiveCamera, Quaternion, SRGBColorSpace, Scene, Vector3, WebGLRenderer,
+  Box3, DirectionalLight, Euler, Group, MeshPhysicalMaterial, PerspectiveCamera, Quaternion, Scene, Vector3,
 } from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { getGL, handoff } from './gl.js';
 
 const DEPTH = 1.6;                 // mesma espessura da dobra 3D
 const WINDOW = 0.42;               // fatia do progresso que cada peça leva para encaixar
@@ -18,15 +17,19 @@ const easeInOut = (t) => (t < .5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
  * girando e vão encaixando em volta do círculo. `setProgress(0..1)` comanda a montagem;
  * `exit(0..1)` faz o giro final de saída.
  */
-export async function createLoaderScene(canvas, buffer) {
-  const renderer = new WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
-  renderer.outputColorSpace = SRGBColorSpace;
-  renderer.toneMapping = NeutralToneMapping;
+export async function createLoaderScene(placeholder, buffer) {
+  // usa o WebGL compartilhado do site (lib/gl.js): o canvas dele toma o lugar do <canvas> da tela
+  const gl = getGL();
+  const { renderer, canvas } = gl;
+  gl.owner = 'loader';
+  canvas.className = placeholder.className;
+  canvas.id = placeholder.id;
+  placeholder.replaceWith(canvas);
+  // sem antialias no contexto: desenha em resolução maior (supersampling) para bordas lisas
+  renderer.setPixelRatio(Math.min(devicePixelRatio * 1.5, 2));
 
   const scene = new Scene();
-  const pmrem = new PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environment = gl.env;
   const camera = new PerspectiveCamera(30, 1, 0.1, 100);
   const key = new DirectionalLight(0xffffff, 1.5); key.position.set(3, 4, 5);
   const rim = new DirectionalLight(0x9fd8ff, 0.9); rim.position.set(-4, -2, 3);
@@ -53,6 +56,7 @@ export async function createLoaderScene(canvas, buffer) {
   const pieces = [];
   model.traverse((o) => {
     if (!o.isMesh) return;
+    // mesmo material da cena "Cor" da dobra 3D → o shader compila uma vez e serve aos dois
     const mat = new MeshPhysicalMaterial({
       color: o.material.color, roughness: 0.3, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.08,
       emissive: o.material.color, emissiveIntensity: 0.08, envMapIntensity: 1.2,
@@ -96,6 +100,8 @@ export async function createLoaderScene(canvas, buffer) {
   }
   addEventListener('resize', resize, { passive: true });
   resize();
+  // compila o shader fora da thread principal ANTES do primeiro quadro (sem congelar a animação)
+  await renderer.compileAsync(scene, camera);
 
   function frame(now) {
     raf = requestAnimationFrame(frame);
@@ -116,6 +122,7 @@ export async function createLoaderScene(canvas, buffer) {
     spin.rotation.x = (1 - progress) * 0.35 + Math.sin(time * 0.6) * 0.06;
     spin.scale.setScalar(1 - e * 0.22);
     spin.position.y = 0.32 + e * 0.25;
+    renderer.setRenderTarget(null);   // a dobra 3D pode estar preparando texturas no mesmo renderer
     renderer.render(scene, camera);
   }
   raf = requestAnimationFrame(frame);
@@ -127,9 +134,7 @@ export async function createLoaderScene(canvas, buffer) {
       cancelAnimationFrame(raf);
       removeEventListener('resize', resize);
       scene.traverse((o) => { o.geometry?.dispose(); if (o.material) [].concat(o.material).forEach((m) => m.dispose()); });
-      pmrem.dispose();
-      renderer.dispose();
-      renderer.forceContextLoss();   // devolve o contexto WebGL para a dobra 3D usar depois
+      handoff();   // entrega o canvas/renderer para a dobra 3D
     },
   };
 }

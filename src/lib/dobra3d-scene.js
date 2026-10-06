@@ -1,11 +1,11 @@
 import {
-  AdditiveBlending, Box3, BufferAttribute, BufferGeometry, Color, DirectionalLight, DoubleSide, EdgesGeometry, Group, HalfFloatType, LineBasicMaterial, LineDashedMaterial, LineSegments, MathUtils, Mesh, MeshBasicMaterial, MeshPhysicalMaterial, NeutralToneMapping, OrthographicCamera, PMREMGenerator, PerspectiveCamera, PlaneGeometry, Points, SRGBColorSpace, Scene, ShaderMaterial, Vector3, WebGLRenderTarget, WebGLRenderer,
+  AdditiveBlending, Box3, BufferAttribute, BufferGeometry, Color, DirectionalLight, DoubleSide, EdgesGeometry, Group, HalfFloatType, LineBasicMaterial, LineDashedMaterial, LineSegments, MathUtils, Mesh, MeshBasicMaterial, MeshPhysicalMaterial, OrthographicCamera, PerspectiveCamera, PlaneGeometry, Points, SRGBColorSpace, Scene, ShaderMaterial, Vector3, WebGLRenderTarget,
 } from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { getModelBuffer } from './model-buffer.js';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { MeshSurfaceSampler } from 'three/addons/math/MeshSurfaceSampler.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { getGL } from './gl.js';
 
 /* ============================================================
    CONFIGURAÇÃO
@@ -40,20 +40,17 @@ let disposed = false, rafId = 0;
    RENDERER / CENA
    ============================================================ */
 const sticky = section.querySelector('.t3d-sticky');
-const canvas = $('t3d-gl');
-const renderer = new WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
-// qualidade: começa em até 1.5x e cai sozinha se a máquina não aguentar 60 fps
-const PR_MAX = Math.min(devicePixelRatio, 1.5);
+// WebGL compartilhado com a tela de carregamento (lib/gl.js): o canvas chega quando ela sai
+const gl = getGL();
+const { renderer, canvas } = gl;
+let owns = false;
+// qualidade: começa em até 1.25x e cai sozinha se a máquina não aguentar 60 fps
+const PR_MAX = Math.min(devicePixelRatio, 1.25);   // 1.25x: nítido e ~30% menos pixels que 1.5x
 const PR_MIN = Math.min(devicePixelRatio, 0.85);
 let PR = PR_MAX;
-renderer.setPixelRatio(PR);
 renderer.transmissionResolutionScale = 0.5;        // a refração do vidro em meia resolução
-renderer.toneMapping = NeutralToneMapping;   // aplicado só na composição final
-renderer.outputColorSpace = SRGBColorSpace;
 
 const scene = new Scene();
-const pmrem = new PMREMGenerator(renderer);
-scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
 const camera = new PerspectiveCamera(32, 1, 0.1, 100);
 camera.position.set(0, 0, 7);
@@ -138,7 +135,7 @@ STAGES.forEach((s, i) => {
 // 0 · vidro iridescente
 const glassMat = new MeshPhysicalMaterial({
   color: 0xffffff, metalness: 0, roughness: 0.05,
-  transmission: 1, thickness: 1.4, ior: 1.6, dispersion: 0.6,
+  transmission: 1, thickness: 1.4, ior: 1.6,   // sem 'dispersion': triplicava o custo do vidro
   iridescence: 1, iridescenceIOR: 1.35, iridescenceThicknessRange: [180, 820],
   clearcoat: 1, clearcoatRoughness: 0.04,
   attenuationColor: new Color('#d6fff0'), attenuationDistance: 1.5,
@@ -220,6 +217,10 @@ async function buildModel() {
   if (disposed) return;
   const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(buffer, '');
   if (disposed) return;
+  await nextTask();
+  scene.environment = gl.env;   // ambiente de luz já gerado uma vez em lib/gl.js
+  await nextTask();
+  if (disposed) return;
   const model = gltf.scene;
   const box = new Box3().setFromObject(model);
   const size = box.getSize(new Vector3());
@@ -286,13 +287,33 @@ async function buildModel() {
     if (disposed) return;
   }
 
-  // compila os shaders de todas as cenas em segundo plano, para não engasgar ao chegar em cada uma
+  // Compila os shaders em segundo plano JÁ na variante que será usada: as cenas desenham em
+  // texturas (rtA) e só a composição desenha na tela. Compilar com o alvo errado fazia o
+  // navegador recompilar de forma síncrona no 1º quadro (eram as travadas de 600 ms).
   for (let k = 0; k < N; k++) {
     camera.layers.set(k);
+    renderer.setRenderTarget(rtA);
     await renderer.compileAsync(scene, camera, scene);
     if (disposed) return;
   }
+  renderer.setRenderTarget(null);
+  await renderer.compileAsync(compScene, compCam);
+  if (disposed) return;
+
+  // "Aquece" cada cena: desenha uma vez fora da vista para criar agora (durante a tela de
+  // carregamento) as texturas e buffers que o primeiro quadro precisaria.
+  for (let k = 0; k < N; k++) {
+    camera.layers.set(k);
+    renderer.setRenderTarget(k % 2 ? rtB : rtA);
+    renderer.render(scene, camera);
+    renderer.setRenderTarget(null);
+    await nextTask();
+    if (disposed) return;
+  }
+
   $loader.classList.add('done');
+  window.__dobra3dReady = true;
+  window.dispatchEvent(new Event('dobra3d:ready'));   // a tela de carregamento espera por isso
 }
 
 if (location.protocol === 'file:') {
@@ -363,7 +384,7 @@ const inners = layers.map(l => l.querySelector('.t3d-inner'));
 let W = 0, H = 0, top0 = 0;
 function resize() {
   W = sticky.clientWidth; H = sticky.clientHeight;
-  renderer.setSize(W, H, false);
+  if (owns) renderer.setSize(W, H, false);   // enquanto a tela de carregamento usa o canvas, não mexe nele
   rtA.setSize(Math.round(W * PR), Math.round(H * PR));
   rtB.setSize(Math.round(W * PR), Math.round(H * PR));
   camera.aspect = W / H; camera.updateProjectionMatrix();
@@ -379,12 +400,25 @@ function resize() {
 }
 function setQuality(pr) {
   PR = pr; uPR.value = pr;
-  renderer.setPixelRatio(pr);
+  if (owns) renderer.setPixelRatio(pr);
   resize();
+}
+// assume o canvas compartilhado: agora (se a tela de carregamento não existe) ou quando ela sair
+function takeCanvas() {
+  if (owns || disposed) return;
+  owns = true;
+  gl.owner = 'dobra3d';
+  canvas.className = 't3d-canvas';
+  canvas.id = 't3d-gl';
+  const slot = section.querySelector('#t3d-gl');
+  if (slot && slot !== canvas) slot.replaceWith(canvas);
+  setQuality(PR);
 }
 addEventListener('resize', resize, { passive: true });
 cleanups.push(() => removeEventListener('resize', resize));
 resize();
+if (!gl.owner) takeCanvas();
+else { addEventListener('gl:handoff', takeCanvas); cleanups.push(() => removeEventListener('gl:handoff', takeCanvas)); }
 // se o hero mudar de altura (fontes/imagens carregando, celular), recalcula onde a dobra começa
 const heroEl = document.querySelector('.hero');
 if (heroEl) {
@@ -423,7 +457,7 @@ const lastClip = [], lastY = [];
 let lastStage = -1, lastBar = '', lastHint = -1;
 
 // monitor de desempenho: se a média passar de ~45 fps, baixa a resolução um degrau
-let perfT = 0, perfN = 0;
+let perfT = 0, perfN = 0, slowWindows = 0;
 
 let prev = performance.now();
 function frame(now) {
@@ -432,15 +466,18 @@ function frame(now) {
   const dt = Math.min(raw, .05);
   uTime.value += dt;
 
-  smooth += (scrollY - top0 - smooth) * ease(dt, 9);
-  if (!visible) return;
+  smooth += (scrollY - top0 - smooth) * ease(dt, 12);   // o Lenis já suaviza a rolagem; aqui só um toque
+  if (!visible || !owns) return;
   if (scrollY - top0 > H * (SEG * (N - 1) + 1) + 2) return;   // já coberto pela dobra do método
   mx += (tx - mx) * ease(dt, 3);
   my += (ty - my) * ease(dt, 3);
 
   if (raw < .1) { perfT += raw; perfN++; }
   if (perfN >= 90) {
-    if (perfT / perfN > 1 / 45 && PR > PR_MIN + .01) setQuality(Math.max(PR_MIN, PR * .8));
+    // só baixa a qualidade se ficar lento por 2 janelas seguidas (~3 s): um engasgo isolado
+    // não deve provocar uma troca de resolução (que por si só custa um quadro)
+    slowWindows = perfT / perfN > 1 / 45 ? slowWindows + 1 : 0;
+    if (slowWindows >= 2 && PR > PR_MIN + .01) { setQuality(Math.max(PR_MIN, PR * .8)); slowWindows = 0; }
     perfT = 0; perfN = 0;
   }
 
@@ -508,7 +545,6 @@ return () => {
     o.geometry?.dispose();
     [].concat(o.material || []).forEach((m) => m.dispose());
   });
-  rtA.dispose(); rtB.dispose(); pmrem.dispose();
-  renderer.dispose();
+  rtA.dispose(); rtB.dispose();   // o renderer é compartilhado (lib/gl.js): não é descartado aqui
 };
 }

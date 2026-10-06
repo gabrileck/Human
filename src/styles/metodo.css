@@ -8,12 +8,26 @@
   display: flex; flex-direction: column; justify-content: center;
   padding: clamp(96px, 14vh, 150px) clamp(16px, 5vw, 72px) clamp(96px, 14vh, 140px);
   color: #fff; text-align: center;
-  background:
-    radial-gradient(circle at 14% 8%, rgba(0,209,255,.16), transparent 32%),
-    radial-gradient(circle at 88% 78%, rgba(147,39,143,.22), transparent 40%),
-    linear-gradient(180deg, #001a33 0%, #00152b 50%, #001a33 100%);
   font-family: var(--font-display);
   overflow: hidden;
+  isolation: isolate;
+}
+/* A cortina em curva é feita só com transform (a placa de vídeo compõe, nada é repintado):
+   - .metodo-cap: a "cúpula" (curva SVG fixa) que achata com scaleY;
+   - .metodo-bg: o fundo, que desce junto com a borda da curva (translateY).
+   O JS só escreve esses dois transforms. Estado inicial = cortina ainda embaixo. */
+.metodo-cap, .metodo-bg { position: absolute; left: 0; right: 0; z-index: -1; pointer-events: none; will-change: transform; }
+.metodo-cap { top: 0; height: 42vh; transform-origin: 50% 0; transform: scaleY(1); }
+.metodo-cap svg { display: block; width: 100%; height: 100%; }
+.metodo-bg {
+  top: 0; bottom: -42vh;
+  transform: translateY(42vh);
+  /* os brilhos têm alcance limitado e não tocam a borda de cima: ali o fundo é #001a33 puro,
+     a mesma cor da cúpula — sem emenda visível durante a cortina */
+  background:
+    radial-gradient(ellipse 42vw 300px at 14% 330px, rgba(0,209,255,.17), transparent),
+    radial-gradient(ellipse 46vw 420px at 88% 74%, rgba(147,39,143,.22), transparent),
+    linear-gradient(180deg, #001a33 0%, #00152b 50%, #001a33 100%);
 }
 .metodo-kicker {
   color: var(--cyan); font-size: 9px; font-weight: 900; letter-spacing: .8em;
@@ -57,7 +71,7 @@
   pointer-events: none;
   transition: transform .7s cubic-bezier(.2,.8,.2,1);
 }
-.m-figure img { display: block; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 18px 22px rgba(0,0,0,.5)); }
+.m-figure img { display: block; width: 100%; height: 100%; object-fit: contain; }   /* a sombra já vem no PNG original */
 .m-card:hover .m-figure { transform: scale(1.1) rotate(-4deg); }
 .m-icon {
   width: 64px; height: 64px; margin-bottom: 32px; border-radius: 20px;

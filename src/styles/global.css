@@ -9,7 +9,7 @@
   --wall: #9aa3ab;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
+/* rolagem suave: feita pelo Lenis (lib/smooth-scroll.js) — scroll-behavior nativo brigaria com ele */
 body {
   font-family: var(--font-sans);
   color: var(--ink);
