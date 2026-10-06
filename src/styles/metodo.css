@@ -24,10 +24,12 @@
   transform: translateY(42vh);
   /* os brilhos têm alcance limitado e não tocam a borda de cima: ali o fundo é #001a33 puro,
      a mesma cor da cúpula — sem emenda visível durante a cortina */
+  /* A base do fundo termina em #040a16 exatamente na borda de baixo da seção (o fundo é 42vh
+     mais alto que ela) — a mesma cor em que a dobra dos vídeos começa: sem linha entre as duas. */
   background:
     radial-gradient(ellipse 42vw 300px at 14% 330px, rgba(0,209,255,.17), transparent),
-    radial-gradient(ellipse 46vw 420px at 88% 74%, rgba(147,39,143,.22), transparent),
-    linear-gradient(180deg, #001a33 0%, #00152b 50%, #001a33 100%);
+    radial-gradient(ellipse 40vw 260px at 86% 38%, rgba(147,39,143,.2), transparent),
+    linear-gradient(180deg, #001a33 0%, #00152b 45%, #040a16 calc(100% - 42vh), #040a16 100%);
 }
 .metodo-kicker {
   color: var(--cyan); font-size: 9px; font-weight: 900; letter-spacing: .8em;

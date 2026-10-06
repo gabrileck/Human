@@ -9,17 +9,17 @@ const v = (f) => `${base}videos/${f}`;
 // Recortes da 6ª Jornada Farmacêutica (Realize Human × Grupo SPN)
 const VIDEOS = [
   {
-    tag: 'Bastidores', color: '#ff4f8c', figure: 'metodo-rosa.webp', ribbon: 150, dur: '0:40',
+    tag: 'Bastidores', color: '#ff4f8c', dur: '0:40',
     title: 'Comunicação que transforma relações', who: 'Realize Human × Grupo SPN',
     poster: v('palco-1.webp'), preview: v('palco-1-previa.mp4'), full: v('palco-1.mp4'),
   },
   {
-    tag: 'Palestra', color: '#00b8f0', figure: 'metodo-azul.webp', ribbon: 60, dur: '0:36',
+    tag: 'Palestra', color: '#00b8f0', dur: '0:36',
     title: 'Por que você trava na hora de falar?', who: 'Gisele Novaes',
     poster: v('palco-2.webp'), preview: v('palco-2-previa.mp4'), full: v('palco-2.mp4'),
   },
   {
-    tag: 'Comunicação', color: '#00c97a', figure: 'metodo-verde.webp', ribbon: 200, dur: '0:40',
+    tag: 'Comunicação', color: '#00c97a', dur: '0:40',
     title: 'Você só fala — ou se comunica?', who: 'Gisele Novaes',
     poster: v('palco-comunicacao.webp'), preview: v('palco-comunicacao-previa.mp4'), full: v('palco-comunicacao.mp4'),
   },
@@ -37,9 +37,9 @@ const Icon = {
 
 /**
  * 4ª dobra — "No palco".
- * Os vídeos viram credenciais de evento penduradas por cordões (como a da 6ª Jornada),
- * com física de pêndulo: balançam com o scroll, com o mouse e podem ser arrastadas.
- * Passar o mouse toca a prévia muda; clicar abre o "modo palco" com som.
+ * Galeria de vídeos limpa: três vídeos verticais lado a lado, sem nada se mexendo sozinho.
+ * Passar o mouse toca a prévia muda (com uma barra fina de progresso); clicar abre o
+ * "modo palco" com som. No celular, a fileira desliza e a prévia toca no card em foco.
  */
 export default function Palco() {
   const root = useRef(null);
@@ -52,176 +52,81 @@ export default function Palco() {
   const [paused, setPaused] = useState(false);
   const [muted, setMuted] = useState(false);
 
-  /* ================= física + prévias + entrada ================= */
+  /* ================= prévias + entrada ================= */
   useEffect(() => {
     const sec = root.current;
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const fine = matchMedia('(pointer: fine)').matches;
     const q = gsap.utils.selector(sec);
-    const hangs = q('.cred-hang');
-    const light = q('.palco-light')[0];
-    const rack = q('.palco-rack')[0];
     const off = [];
     const on = (el, ev, fn, opt) => { el.addEventListener(ev, fn, opt); off.push(() => el.removeEventListener(ev, fn, opt)); };
 
-    // cada credencial é um pêndulo: θ (ângulo) e ω (velocidade angular)
-    const items = hangs.map((hang, i) => {
-      const swing = hang.querySelector('.cred-swing');
-      const card = hang.querySelector('.cred');
-      const video = hang.querySelector('video');
-      return { hang, swing, card, video, i, theta: 0, omega: 0, len: 400, drag: null, dragged: false, last: '' };
-    });
-    const measure = () => items.forEach((it) => { it.len = Math.max(200, it.swing.offsetHeight * 0.75); });
-    measure();
-    on(window, 'resize', measure, { passive: true });
+    const cards = q('.v-card').map((card) => ({ card, video: card.querySelector('video'), fill: card.querySelector('.v-progress i'), raf: 0 }));
 
-    /* ---------- loop: só roda enquanto algo se mexe e a seção está visível ---------- */
-    let visible = false, raf = 0, prev = 0;
-    let lx = innerWidth * 0.7, ly = innerHeight * 0.3, tlx = lx, tly = ly;   // holofote
-    const G = 2600, DAMP = 1.1, MAX = 6;
-
-    function tick(now) {
-      raf = 0;
-      const dt = Math.min((now - prev) / 1000, 0.033); prev = now;
-      let moving = false;
-      for (const it of items) {
-        if (it.drag) { moving = true; continue; }
-        // pêndulo amortecido: α = -(g/L)·sen θ − c·ω
-        const alpha = -(G / it.len) * Math.sin(it.theta) - DAMP * it.omega;
-        it.omega = Math.max(-MAX, Math.min(MAX, it.omega + alpha * dt));
-        it.theta += it.omega * dt;
-        if (Math.abs(it.theta) > 0.0008 || Math.abs(it.omega) > 0.002) moving = true;
-      }
-      for (const it of items) {
-        const t = `rotate(${it.theta.toFixed(4)}rad)`;
-        if (t !== it.last) { it.swing.style.transform = t; it.last = t; }
-      }
-      // holofote persegue o alvo (credencial ativa ou mouse)
-      const k = 1 - Math.exp(-dt * 5);
-      lx += (tlx - lx) * k; ly += (tly - ly) * k;
-      light.style.transform = `translate3d(${lx.toFixed(1)}px, ${ly.toFixed(1)}px, 0)`;
-      if (Math.abs(tlx - lx) > 0.5 || Math.abs(tly - ly) > 0.5) moving = true;
-
-      if (moving && visible) raf = requestAnimationFrame(tick);
-    }
-    const kick = () => { if (!raf && visible) { prev = performance.now(); raf = requestAnimationFrame(tick); } };
-    const nudge = (it, w) => { if (!reduce) { it.omega += w; kick(); } };
-
-    const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting; if (visible) kick(); }, { rootMargin: '100px 0px' });
-    io.observe(sec);
-    off.push(() => io.disconnect());
-
-    /* ---------- o scroll balança os cordões (a inércia "puxa" as credenciais) ---------- */
-    let lastY = scrollY, lastX = 0;
-    on(window, 'scroll', () => {
-      const dy = scrollY - lastY; lastY = scrollY;
-      if (!visible) return;
-      items.forEach((it) => nudge(it, -dy * 0.0035 * (0.8 + it.i * 0.18)));
-    }, { passive: true });
-    on(rack, 'scroll', () => {   // fileira lateral do celular
-      const dx = rack.scrollLeft - lastX; lastX = rack.scrollLeft;
-      items.forEach((it) => nudge(it, dx * 0.004));
-    }, { passive: true });
-
-    /* ---------- holofote segue o mouse ---------- */
-    on(sec, 'pointermove', (e) => {
-      const r = sec.getBoundingClientRect();
-      tlx = e.clientX - r.left; tly = e.clientY - r.top;
-      kick();
-    }, { passive: true });
-
-    /* ---------- prévia muda: toca ao passar o mouse (desktop) ou ao aparecer (toque) ---------- */
+    // barra de progresso da prévia: só roda enquanto a prévia toca
+    const track = (it) => {
+      const step = () => {
+        const vv = it.video;
+        if (vv.duration) it.fill.style.transform = `scaleX(${(vv.currentTime / vv.duration).toFixed(4)})`;
+        it.raf = requestAnimationFrame(step);
+      };
+      it.raf = requestAnimationFrame(step);
+    };
     const play = (it) => {
       if (dlg.current?.open) return;
-      const vid = it.video;
-      if (!vid.src) vid.src = vid.dataset.src;   // só baixa a prévia quando for usada
-      vid.play().then(() => it.card.classList.add('is-playing')).catch(() => {});
+      const vv = it.video;
+      if (!vv.src) vv.src = vv.dataset.src;   // só baixa a prévia quando for usada
+      vv.play().then(() => { it.card.classList.add('is-playing'); cancelAnimationFrame(it.raf); track(it); }).catch(() => {});
     };
-    const stop = (it) => { it.video.pause(); it.card.classList.remove('is-playing'); };
+    const stop = (it) => {
+      it.video.pause();
+      it.card.classList.remove('is-playing');
+      cancelAnimationFrame(it.raf);
+      it.raf = 0;
+    };
 
-    items.forEach((it) => {
-      const card = it.card;
-      if (fine) {
-        on(card, 'pointerenter', () => {
-          play(it);
-          const r = card.getBoundingClientRect(), s = sec.getBoundingClientRect();
-          tlx = r.left + r.width / 2 - s.left; tly = r.top + r.height / 2 - s.top; kick();
-        });
-        on(card, 'pointerleave', () => stop(it));
-        on(card, 'focus', () => play(it));
-        on(card, 'blur', () => stop(it));
-        // "esbarrar" com o mouse empurra a credencial — de leve, para ela não fugir do cursor
-        on(card, 'pointermove', (e) => {
-          if (!it.drag) nudge(it, Math.max(-0.08, Math.min(0.08, -e.movementX * 0.0012)));
-        }, { passive: true });
-      }
-
-      /* arrastar (mouse/caneta): o ângulo segue o ponteiro em volta do topo do cordão */
-      on(card, 'pointerdown', (e) => {
-        if (e.pointerType === 'touch' || reduce) return;
-        const r = it.hang.getBoundingClientRect();
-        it.drag = { px: r.left + r.width / 2, py: r.top, x0: e.clientX, t: performance.now() };
-        it.dragged = false;
-        card.setPointerCapture(e.pointerId);
+    if (fine) {
+      cards.forEach((it) => {
+        on(it.card, 'pointerenter', () => play(it));
+        on(it.card, 'pointerleave', () => stop(it));
+        on(it.card, 'focus', () => play(it));
+        on(it.card, 'blur', () => stop(it));
       });
-      on(card, 'pointermove', (e) => {
-        const d = it.drag;
-        if (!d) return;
-        if (Math.abs(e.clientX - d.x0) > 6) it.dragged = true;
-        if (!it.dragged) return;
-        const theta = Math.max(-1.1, Math.min(1.1, -Math.atan2(e.clientX - d.px, Math.max(40, e.clientY - d.py))));
-        const now = performance.now();
-        it.omega = (theta - it.theta) / Math.max(0.008, (now - d.t) / 1000);   // velocidade para o "arremesso"
-        it.theta = theta; d.t = now;
-        it.swing.style.transform = `rotate(${theta.toFixed(4)}rad)`; it.last = '';
-        kick();
-      });
-      const end = () => { if (it.drag) { it.drag = null; kick(); } };
-      on(card, 'pointerup', end);
-      on(card, 'pointercancel', end);
-      // um arraste não conta como clique
-      on(card, 'click', (e) => { if (it.dragged) { e.preventDefault(); e.stopImmediatePropagation(); it.dragged = false; } }, true);
-    });
-
-    if (!fine) {
+    } else {
+      // toque: toca a prévia do card que está em foco na fileira
       const vio = new IntersectionObserver((entries) => {
         entries.forEach((en) => {
-          const it = items.find((x) => x.card === en.target);
-          if (en.intersectionRatio > 0.6) play(it); else stop(it);
+          const it = cards.find((x) => x.card === en.target);
+          if (en.intersectionRatio > 0.7) play(it); else stop(it);
         });
-      }, { threshold: [0, 0.6] });
-      items.forEach((it) => vio.observe(it.card));
+      }, { threshold: [0, 0.7] });
+      cards.forEach((it) => vio.observe(it.card));
       off.push(() => vio.disconnect());
     }
 
-    /* ---------- entrada: credenciais "caem" e ficam balançando ---------- */
+    /* ---------- entrada discreta: título sobe, textos e vídeos aparecem em sequência ---------- */
     const ctx = gsap.context(() => {
       if (reduce) return;
-      gsap.set(hangs, { y: () => -innerHeight * 0.9 });
       gsap.set(q('.palco-title .ln > span'), { yPercent: 110 });
       gsap.set(q('[data-palco-in]'), { autoAlpha: 0, y: 18 });
+      gsap.set(q('.v-grid > li'), { autoAlpha: 0, y: 40 });
 
-      const tl = gsap.timeline({ paused: true });
+      const tl = gsap.timeline({ paused: true, defaults: { ease: 'power3.out' } });
       tl
-        // título sobe de trás da máscara: power4.out, seco e firme (mesma assinatura do site)
+        // power4.out: o título sobe rápido e para firme (mesma assinatura das outras dobras)
         .to(q('.palco-title .ln > span'), { yPercent: 0, duration: 1.1, ease: 'power4.out', stagger: 0.09 })
-        .to(q('[data-palco-in]'), { autoAlpha: 1, y: 0, duration: 0.8, ease: 'power3.out', stagger: 0.08 }, '-=0.7')
-        // credenciais caem penduradas: elastic.out quica no fim do cordão, como algo leve
-        // preso por uma fita. Cada uma, ao "esticar" o cordão, ganha um balanço próprio.
-        .to(hangs, {
-          y: 0, duration: 1.6, ease: 'elastic.out(1, 0.55)', stagger: 0.14,
-          // na tela estreita o balanço é menor, para a credencial não sair da fileira
-          onComplete() { items.forEach((it, i) => nudge(it, (i % 2 ? 1 : -1) * (1.2 + Math.random()) * (fine ? 1 : 0.45))); },
-        }, '<0.1');
+        .to(q('[data-palco-in]'), { autoAlpha: 1, y: 0, duration: 0.8, stagger: 0.07 }, '-=0.7')
+        // vídeos: sobem e assentam, um depois do outro, sem quique
+        .to(q('.v-grid > li'), { autoAlpha: 1, y: 0, duration: 1, stagger: 0.12 }, '<0.1');
 
       const sio = new IntersectionObserver(([e]) => {
         if (e.isIntersecting) { tl.play(); sio.disconnect(); }
-      }, { threshold: 0.3 });
+      }, { threshold: 0.25 });
       sio.observe(sec);
       off.push(() => sio.disconnect());
     }, sec);
 
-    return () => { cancelAnimationFrame(raf); off.forEach((fn) => fn()); ctx.revert(); };
+    return () => { cards.forEach((it) => cancelAnimationFrame(it.raf)); off.forEach((fn) => fn()); ctx.revert(); };
   }, []);
 
   /* ================= modo palco ================= */
@@ -239,19 +144,19 @@ export default function Palco() {
   function open(i, e) {
     const d = dlg.current;
     // pausa as prévias
-    root.current.querySelectorAll('.cred video').forEach((x) => x.pause());
-    root.current.querySelectorAll('.cred.is-playing').forEach((x) => x.classList.remove('is-playing'));
-    openFrom.current = e.currentTarget.querySelector('.cred-screen');
+    root.current.querySelectorAll('.v-card video').forEach((x) => x.pause());
+    root.current.querySelectorAll('.v-card.is-playing').forEach((x) => x.classList.remove('is-playing'));
+    openFrom.current = e.currentTarget;
     load(i);                    // play() ainda dentro do clique: o navegador libera o som
     d.showModal();
     window.__lenis?.stop();     // a página atrás não rola enquanto o palco está aberto
 
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    // FLIP: a tela da credencial "cresce" até virar o palco
+    // FLIP: o card "cresce" até virar o palco
     const from = openFrom.current.getBoundingClientRect();
     const to = frame.current.getBoundingClientRect();
     gsap.fromTo(frame.current,
-      { x: from.left - to.left, y: from.top - to.top, scale: from.width / to.width, borderRadius: 10 },
+      { x: from.left - to.left, y: from.top - to.top, scale: from.width / to.width, borderRadius: 20 },
       // power4.out: arranca rápido e freia longo — o vídeo "pousa" no centro com peso
       { x: 0, y: 0, scale: 1, borderRadius: 22, duration: 0.85, ease: 'power4.out', clearProps: 'transform' });
     gsap.fromTo(d.querySelectorAll('.ps-info > *, .ps-close, .ps-count'),
@@ -311,8 +216,6 @@ export default function Palco() {
 
   return (
     <section class="palco" id="palco" ref={root} aria-labelledby="palco-title">
-      <div class="palco-light" aria-hidden="true" />
-
       <div class="palco-copy">
         <span class="palco-kicker" data-palco-in>04 — Realize Human em ação</span>
         <h2 class="palco-title" id="palco-title">
@@ -327,36 +230,32 @@ export default function Palco() {
         <p class="palco-event" data-palco-in><b>6ª Jornada Farmacêutica</b>Realize Human × Grupo SPN</p>
         <a class="palco-cta" data-palco-in href={WA} target="_blank" rel="noopener noreferrer">Leve uma palestra para sua empresa →</a>
         <p class="palco-hint" data-palco-in>
-          <span class="hint-mouse">Arraste as credenciais · clique para assistir com som</span>
+          <span class="hint-mouse">Passe o mouse para ver a prévia · clique para assistir com som</span>
           <span class="hint-touch">Deslize para o lado · toque para assistir com som</span>
         </p>
       </div>
 
-      <div class="palco-rack" role="list" aria-label="Vídeos da 6ª Jornada Farmacêutica">
+      <ul class="v-grid" aria-label="Vídeos da 6ª Jornada Farmacêutica">
         {VIDEOS.map((item, i) => (
-          <div class="cred-hang" role="listitem" key={item.full} style={{ '--c': item.color, '--ribbon': `${item.ribbon}px` }}>
-            <div class="cred-swing">
-              <div class="cred-ribbon" aria-hidden="true"><span>Realize Human · Realize Human · Realize Human</span></div>
-              <div class="cred-clip" aria-hidden="true" />
-              <button class="cred" type="button" aria-label={`Assistir com som: ${item.title} (${item.dur})`} onClick={(e) => open(i, e)}>
-                <span class="cred-head" aria-hidden="true">
-                  <span>Credencial</span>
-                  <img src={`${base}assets/${item.figure}`} alt="" width="26" height="30" loading="lazy" decoding="async" />
-                </span>
-                <span class="cred-screen">
-                  <img src={item.poster} alt="" width="360" height="640" loading="lazy" decoding="async" />
-                  <video data-src={item.preview} muted playsinline loop preload="none" aria-hidden="true" />
-                  <span class="cred-live" aria-hidden="true">PRÉVIA</span>
-                  <span class="cred-play" aria-hidden="true">{Icon.play}</span>
-                  <span class="cred-dur" aria-hidden="true">{item.dur}</span>
-                </span>
-                <span class="cred-body"><b>{item.title}</b><small>{item.who}</small></span>
-                <span class="cred-foot">{item.tag}</span>
-              </button>
-            </div>
-          </div>
+          <li key={item.full}>
+            <button class="v-card" type="button" style={{ '--c': item.color }}
+              aria-label={`Assistir com som: ${item.title}, ${item.who} (${item.dur})`} onClick={(e) => open(i, e)}>
+              <span class="v-media" aria-hidden="true">
+                <img src={item.poster} alt="" width="360" height="640" loading="lazy" decoding="async" />
+                <video data-src={item.preview} muted playsinline loop preload="none" />
+              </span>
+              <span class="v-shade" aria-hidden="true" />
+              <span class="v-top" aria-hidden="true">
+                <span class="v-tag">{item.tag}</span>
+                <span class="v-dur">{item.dur}</span>
+              </span>
+              <span class="v-play" aria-hidden="true">{Icon.play}</span>
+              <span class="v-info" aria-hidden="true"><b>{item.title}</b><small>{item.who}</small></span>
+              <span class="v-progress" aria-hidden="true"><i /></span>
+            </button>
+          </li>
         ))}
-      </div>
+      </ul>
 
       <dialog class={`ps${paused ? ' is-paused' : ''}`} ref={dlg} aria-label="Modo palco" data-lenis-prevent onKeyDown={onKey} style={{ '--c': cur.color }}>
         <div class="ps-spot" aria-hidden="true" />
