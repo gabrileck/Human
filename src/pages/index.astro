@@ -5,6 +5,7 @@ import Preloader from '../components/Preloader.astro';
 import Hero from '../components/Hero.jsx';
 import Dobra3D from '../components/Dobra3D.jsx';
 import Metodo from '../components/Metodo.jsx';
+import Palco from '../components/Palco.jsx';
 
 import parede from '../assets/hero/parede.webp';
 import estante from '../assets/hero/estante.webp';
@@ -54,13 +55,14 @@ const images = {
 	<Hero client:load images={images} />
 
 	<!--
-		2ª dobra — client:visible
-		O JS do componente (e, por dentro dele, o three.js + o modelo .glb) só é baixado
-		quando a seção aparece. rootMargin com margem NEGATIVA embaixo: a borda diagonal
-		desta dobra já aparece no rodapé do hero ao abrir a página; sem isso ela contaria
-		como "visível" logo de cara e o 3D carregaria junto com a primeira dobra.
+		2ª dobra — client:load
+		Exceção à regra "abaixo da dobra = client:visible": a cena 3D é a parte mais pesada
+		do site (WebGL, modelo, shaders). Montá-la só ao aparecer travava a rolagem rápida.
+		Agora ela é montada e aquecida DURANTE a tela de carregamento (que espera por ela),
+		e o three.js/modelo já vêm do mesmo download da tela de carregamento.
+		Enquanto não está na tela, ela não desenha nada (IntersectionObserver interno).
 	-->
-	<Dobra3D client:visible={{ rootMargin: '0px 0px -20% 0px' }} />
+	<Dobra3D client:load />
 
 	<!--
 		3ª dobra — client:visible
@@ -68,4 +70,12 @@ const images = {
 		já estar recortando a borda quando a seção surgir (senão apareceria um frame reto).
 	-->
 	<Metodo client:visible={{ rootMargin: '100% 0px 100% 0px' }} />
+
+	<!--
+		4ª dobra — client:visible
+		Vídeos como credenciais de evento penduradas. Hidrata meia tela antes de aparecer,
+		para a queda das credenciais começar no momento certo. Os vídeos completos (com som)
+		só são baixados quando alguém abre o "modo palco".
+	-->
+	<Palco client:visible={{ rootMargin: '50% 0px 50% 0px' }} />
 </Layout>

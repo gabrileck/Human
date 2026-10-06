@@ -7,6 +7,30 @@ export default defineConfig({
   // Preact: mesmo JSX/hooks do React, com ~4 KB de runtime no lugar de ~66 KB
   integrations: [preact()],
 
+  // CSP com hashes gerados no build: só os scripts/estilos do próprio site executam.
+  // 'wasm-unsafe-eval' e blob: são exigidos pelo decodificador meshopt e pelas texturas do GLB.
+  security: {
+    csp: {
+      algorithm: 'SHA-256',
+      directives: [
+        "default-src 'self'",
+        "img-src 'self' data: blob:",
+        "font-src 'self'",
+        "connect-src 'self' blob: data:",
+        "worker-src 'self' blob:",
+        "media-src 'self'",
+        "manifest-src 'self'",
+        "object-src 'none'",
+        "frame-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        'upgrade-insecure-requests',
+      ],
+      scriptDirective: { resources: ["'self'", "'wasm-unsafe-eval'"] },
+      styleDirective: { resources: ["'self'", { resource: "'unsafe-inline'", kind: 'attribute' }] },
+    },
+  },
+
   build: {
     // o CSS (~12 KB) vai embutido no HTML: uma requisição a menos bloqueando o primeiro desenho
     inlineStylesheets: 'always',

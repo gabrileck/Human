@@ -36,7 +36,8 @@ export default function Metodo() {
     const sec = root.current;
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const q = gsap.utils.selector(sec);
-    let revealed = false, raf = 0, lastClip = '';
+    let revealed = false, raf = 0, lastB = -1;
+    const cap = sec.querySelector('.metodo-cap'), bg = sec.querySelector('.metodo-bg');
     const cleanups = [];
 
     const ctx = gsap.context(() => {
@@ -105,10 +106,13 @@ export default function Metodo() {
         const r = sec.getBoundingClientRect(), H = innerHeight;
         const prog = Math.min(1, Math.max(0, 1 - r.top / H));       // 0 = ainda embaixo · 1 = cobriu a tela
         if (prog > 0.82 && !revealed) { revealed = true; tl.play(); }
-        const bulge = reduce ? 0 : (1 - prog) * (1 - prog) * H * 0.42;  // altura da curva, achata no final
-        const w = r.width.toFixed(1), h = r.height.toFixed(1), b = bulge.toFixed(1);
-        const clip = bulge < 0.5 ? '' : `path('M0 ${b} Q ${(r.width / 2).toFixed(1)} ${-b} ${w} ${b} L ${w} ${h} L 0 ${h} Z')`;
-        if (clip !== lastClip) { sec.style.clipPath = clip; lastClip = clip; }
+        // altura da curva (0 a 1): cheia com a seção embaixo, achata até zero ao cobrir a tela
+        const b = reduce ? 0 : Math.round((1 - prog) * (1 - prog) * 1000) / 1000;
+        if (b !== lastB) {
+          cap.style.transform = `scaleY(${b})`;
+          bg.style.transform = `translate3d(0, ${(b * 0.42 * H).toFixed(1)}px, 0)`;
+          lastB = b;
+        }
       }
       const kick = () => { if (!raf) raf = requestAnimationFrame(curtain); };
       addEventListener('scroll', kick, { passive: true });
@@ -122,6 +126,11 @@ export default function Metodo() {
 
   return (
     <section class="metodo" id="metodo" ref={root}>
+      {/* cortina: cúpula (parábola, igual à borda antiga) + fundo */}
+      <div class="metodo-cap" aria-hidden="true">
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M0 100 Q50 -100 100 100 Z" fill="#001a33" /></svg>
+      </div>
+      <div class="metodo-bg" aria-hidden="true" />
       <div class="mask"><span class="metodo-kicker">Metodologia estratégica</span></div>
       <div class="mask">
         <h2 aria-label="Método">

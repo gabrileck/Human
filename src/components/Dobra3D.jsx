@@ -63,7 +63,7 @@ export default function Dobra3D() {
               </h2>
               <p class="t3d-desc">
                 <b>{s.label}</b>{s.text}
-                {s.cta && <><br /><a class="t3d-cta" href={WA} target="_blank" rel="noopener">AGENDE UMA CONVERSA →</a></>}
+                {s.cta && <><br /><a class="t3d-cta" href={WA} target="_blank" rel="noopener noreferrer">AGENDE UMA CONVERSA →</a></>}
               </p>
             </div>
           </div>
