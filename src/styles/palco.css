@@ -3,38 +3,22 @@
   --fg: #eef4f2;
   --muted: rgba(238, 244, 242, .6);
   --gutter: clamp(16px, 5.5vw, 88px);
+  --seam: #040a16;                 /* mesma cor do fim do Método: as duas dobras viram um espaço só */
   position: relative; z-index: 4;
   min-height: 100vh; min-height: 100svh;
-  display: grid; grid-template-columns: minmax(300px, 0.9fr) 1.4fr; align-items: center; gap: 24px;
-  padding: 0 var(--gutter) clamp(64px, 10vh, 120px);
+  display: grid; grid-template-columns: minmax(300px, .82fr) 1.5fr; align-items: center;
+  gap: clamp(28px, 5vw, 80px);
+  padding: clamp(80px, 12vh, 130px) var(--gutter);
   color: var(--fg);
-  /* começa no azul do Método e escurece até o "palco" */
   background:
-    radial-gradient(60% 50% at 70% 0%, rgba(255, 79, 140, .10), transparent 70%),
-    linear-gradient(180deg, #001a33 0%, #050812 28%, #04060b 100%);
+    radial-gradient(ellipse 50vw 380px at 78% 62%, rgba(255, 79, 140, .07), transparent),
+    linear-gradient(180deg, var(--seam) 0%, #04070d 45%, #04060b 100%);
   overflow: hidden;
   isolation: isolate;
 }
 
-/* holofote: um disco de luz que segue o mouse/credencial ativa (só transform → barato) */
-.palco-light {
-  position: absolute; z-index: -1; left: 0; top: 0;
-  width: 70vmax; height: 70vmax; margin: -35vmax 0 0 -35vmax;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(255, 236, 214, .13), rgba(255, 236, 214, .04) 55%, transparent);
-  pointer-events: none;
-  will-change: transform;
-  transform: translate3d(70vw, 30vh, 0);
-}
-/* chão do palco: reflexo suave embaixo */
-.palco::after {
-  content: ""; position: absolute; z-index: -1; left: 0; right: 0; bottom: 0; height: 30%;
-  background: linear-gradient(to top, rgba(255, 255, 255, .035), transparent);
-  pointer-events: none;
-}
-
 /* ---------- texto ---------- */
-.palco-copy { position: relative; z-index: 2; padding-top: clamp(140px, 22vh, 220px); max-width: 520px; }
+.palco-copy { position: relative; z-index: 2; max-width: 500px; }
 .palco-kicker {
   display: flex; align-items: center; gap: 12px;
   font: 400 11px/1 var(--font-mono); letter-spacing: .22em; text-transform: uppercase; color: var(--muted);
@@ -43,14 +27,15 @@
 .palco-title {
   margin-top: 22px;
   font-family: var(--font-serif); font-weight: 400;
-  font-size: clamp(40px, 4.8vw, 76px); line-height: .98; letter-spacing: -.025em;
+  font-size: clamp(40px, 4.6vw, 72px); line-height: .98; letter-spacing: -.025em;
 }
 .palco-title .ln { display: block; overflow: hidden; padding-bottom: .06em; }
 .palco-title .ln > span { display: inline-block; }
 .palco-title em { color: #ff6b8a; }
 .palco-lead { margin-top: 24px; max-width: 440px; font-size: 16px; line-height: 1.65; color: var(--muted); }
 .palco-event {
-  margin-top: 26px; display: flex; flex-direction: column; gap: 4px;
+  margin-top: 26px; padding-top: 22px; border-top: 1px solid rgba(238, 244, 242, .1);
+  display: flex; flex-direction: column; gap: 4px;
   font: 400 11px/1.5 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
 }
 .palco-event b { color: var(--fg); font-weight: 500; }
@@ -59,121 +44,82 @@
   padding: 16px 24px; border-radius: 999px;
   font: 600 14px/1 var(--font-sans); color: #fff; text-decoration: none;
   background: linear-gradient(90deg, #ff4f8c, #ff8a3d);
-  box-shadow: 0 14px 34px -14px rgba(255, 79, 140, .8);
-  transition: transform .25s ease, box-shadow .25s ease;
+  transition: transform .25s ease, filter .25s ease;
 }
-.palco-cta:hover { transform: translateY(-2px); box-shadow: 0 18px 40px -14px rgba(255, 79, 140, 1); }
+.palco-cta:hover { transform: translateY(-2px); filter: brightness(1.08); }
 .palco-hint {
-  margin-top: 22px; display: flex; align-items: center; gap: 10px;
+  margin-top: 20px;
   font: 400 11px/1.4 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: rgba(238, 244, 242, .42);
 }
 .hint-touch { display: none; }
 @media (pointer: coarse) { .hint-mouse { display: none; } .hint-touch { display: inline; } }
-.palco-hint::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #ff4f8c; box-shadow: 0 0 0 4px rgba(255, 79, 140, .2); }
 
-/* ---------- credenciais penduradas ---------- */
-.palco-rack {
-  position: relative; z-index: 1; align-self: start;
-  display: flex; justify-content: center; align-items: flex-start; gap: clamp(18px, 3vw, 48px);
-  height: 100%;
-}
-.cred-hang { --c: #ff4f8c; --ribbon: 120px; flex: 0 0 auto; }
-/* o "pêndulo": gira em volta do topo do cordão */
-.cred-hang { will-change: transform; }   /* a queda da entrada é composta pela placa de vídeo, sem repintar */
-.cred-swing { position: relative; transform-origin: 50% 0; will-change: transform; display: flex; flex-direction: column; align-items: center; }
-/* sombra da credencial: um degradê (barato) no lugar de um desfoque grande (caro de pintar) */
-.cred-swing::after {
-  content: ""; position: absolute; z-index: -1; left: 6%; right: 6%; bottom: -34px; height: 90px;
-  background: radial-gradient(closest-side, rgba(0, 0, 0, .55), transparent);
-  pointer-events: none;
-}
-
-.cred-ribbon {
-  position: relative; width: 26px; height: var(--ribbon);
-  background: var(--c);
-  box-shadow: inset 4px 0 0 rgba(255,255,255,.18), inset -4px 0 0 rgba(0,0,0,.18);
-  overflow: hidden;
-}
-.cred-ribbon span {   /* texto impresso no cordão, como num crachá de evento */
-  position: absolute; left: 50%; top: 0;
-  writing-mode: vertical-rl; transform: translateX(-50%);
-  font: 600 9px/1 var(--font-sans); letter-spacing: .3em; text-transform: uppercase;
-  color: rgba(255, 255, 255, .85); white-space: nowrap;
-}
-.cred-clip {   /* presilha de metal */
-  width: 30px; height: 22px; margin-top: -2px; border-radius: 6px 6px 10px 10px;
-  background: linear-gradient(180deg, #e9edf1, #9aa3ad 55%, #d7dde3);
-  box-shadow: 0 2px 4px rgba(0,0,0,.4), inset 0 -3px 0 rgba(0,0,0,.15);
+/* ---------- galeria de vídeos ---------- */
+.v-grid {
   position: relative; z-index: 1;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(14px, 1.6vw, 24px);
+  list-style: none;
 }
-
-.cred {
-  /* reset de botão */
-  appearance: none; border: 0; padding: 0; font: inherit; color: inherit; text-align: left; cursor: grab;
-  position: relative; margin-top: -8px;
-  width: clamp(178px, 14.5vw, 236px);
-  border-radius: 16px; overflow: hidden;
-  background: #fff; color: #1b1d22;
-  box-shadow: 0 0 0 1px rgba(0,0,0,.06);
+.v-card {
+  --c: #ff4f8c;
+  appearance: none; border: 0; padding: 0; margin: 0; font: inherit; color: #fff; text-align: left; cursor: pointer;
+  position: relative; display: block; width: 100%;
+  aspect-ratio: 9 / 16;
+  border-radius: 20px; overflow: hidden;
+  background: #0b0f16;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .08);
+  transition: transform .5s cubic-bezier(.2, .8, .2, 1), box-shadow .4s ease;
   -webkit-tap-highlight-color: transparent;
 }
-.cred:active { cursor: grabbing; }
-.cred:focus-visible { outline: 3px solid var(--c); outline-offset: 4px; }
-.cred::before {   /* furo do crachá */
-  content: ""; position: absolute; z-index: 2; left: 50%; top: 9px; width: 34px; height: 7px; margin-left: -17px;
-  border-radius: 4px; background: #04060b; box-shadow: inset 0 1px 2px rgba(0,0,0,.6);
-}
-.cred-head {
-  display: flex; align-items: flex-end; justify-content: space-between; gap: 8px;
-  height: 52px; padding: 0 12px 8px;
-  background: linear-gradient(90deg, #ff4f8c, #ff8a3d);
-  font: 800 10px/1 var(--font-sans); letter-spacing: .24em; text-transform: uppercase; color: #fff;
-}
-.cred-head img { width: 26px; height: 30px; object-fit: contain; filter: drop-shadow(0 3px 4px rgba(0,0,0,.25)); }
+.v-card:hover { transform: translateY(-6px); box-shadow: 0 0 0 1px rgba(255, 255, 255, .22); }
+.v-card:focus-visible { outline: 2px solid var(--c); outline-offset: 4px; }
 
-.cred-screen {
-  position: relative; display: block; margin: 10px 10px 0; aspect-ratio: 9 / 16;
-  border-radius: 10px; overflow: hidden; background: #0b0f16;
+/* mídia: capa + prévia; o zoom no hover é só transform (não repinta) */
+.v-media { position: absolute; inset: 0; transition: transform .8s cubic-bezier(.2, .8, .2, 1); will-change: transform; }
+.v-card:hover .v-media { transform: scale(1.04); }
+.v-media img, .v-media video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.v-media video { opacity: 0; transition: opacity .4s ease; }
+.v-card.is-playing .v-media video { opacity: 1; }
+/* leitura do texto: escurece só a base e o topo */
+.v-shade {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(4, 6, 11, .55) 0%, transparent 22%),
+    linear-gradient(0deg, rgba(4, 6, 11, .92) 0%, rgba(4, 6, 11, .55) 32%, transparent 58%);
 }
-.cred-screen img, .cred-screen video {
-  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+
+.v-top {
+  position: absolute; top: 14px; left: 14px; right: 14px;
+  display: flex; justify-content: space-between; align-items: center;
 }
-.cred-screen video { opacity: 0; transition: opacity .35s ease; }
-.cred.is-playing .cred-screen video { opacity: 1; }
-.cred-play {
-  position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px;
+.v-tag {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 6px 10px; border-radius: 999px;
+  background: rgba(4, 6, 11, .55); border: 1px solid rgba(255, 255, 255, .14);
+  font: 600 10px/1 var(--font-sans); letter-spacing: .16em; text-transform: uppercase;
+}
+.v-tag::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--c); }
+.v-dur { font: 500 11px/1 var(--font-mono); letter-spacing: .06em; color: rgba(255, 255, 255, .85); }
+
+.v-play {
+  position: absolute; left: 50%; top: 46%; width: 58px; height: 58px; margin: -29px 0 0 -29px;
   display: grid; place-items: center; border-radius: 50%;
-  background: rgba(255, 255, 255, .9); color: #1b1d22;
-  box-shadow: 0 10px 30px rgba(0,0,0,.35);
-  transition: transform .35s cubic-bezier(.2,.8,.2,1), opacity .35s ease;
+  background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .35);
+  transition: transform .4s cubic-bezier(.2, .8, .2, 1), background .3s ease, opacity .3s ease;
 }
-.cred-play svg { width: 20px; height: 20px; margin-left: 3px; }
-.cred:hover .cred-play, .cred:focus-visible .cred-play { transform: scale(1.1); }
-.cred.is-playing .cred-play { opacity: 0; transform: scale(.7); }
-.cred-dur {
-  position: absolute; right: 8px; bottom: 8px; padding: 4px 7px; border-radius: 6px;
-  background: rgba(0,0,0,.6); color: #fff; font: 500 10px/1 var(--font-mono); letter-spacing: .06em;
-}
-.cred-live {   /* "AO VIVO" piscando enquanto a prévia toca */
-  position: absolute; left: 8px; top: 8px; padding: 4px 7px 4px 18px; border-radius: 6px;
-  background: rgba(0,0,0,.6); color: #fff; font: 500 9px/1 var(--font-mono); letter-spacing: .12em;
-  opacity: 0; transition: opacity .3s ease;
-}
-.cred-live::before {
-  content: ""; position: absolute; left: 7px; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%;
-  background: #ff3b5c; animation: cred-blink 1.2s ease-in-out infinite;
-}
-.cred.is-playing .cred-live { opacity: 1; }
-@keyframes cred-blink { 50% { opacity: .25; } }
+.v-play svg { width: 18px; height: 18px; margin-left: 3px; }
+.v-card:hover .v-play, .v-card:focus-visible .v-play { background: #fff; color: #04060b; transform: scale(1.06); }
+.v-card.is-playing .v-play { opacity: 0; transform: scale(.85); }
 
-.cred-body { display: block; padding: 12px 12px 10px; }
-.cred-body b { display: block; font: 800 13px/1.25 var(--font-sans); letter-spacing: -.005em; }
-.cred-body small { display: block; margin-top: 5px; font: 500 11px/1.3 var(--font-sans); color: #5a606b; }
-.cred-foot {
-  display: block; padding: 9px 12px; text-align: center;
-  background: var(--c); color: #fff;
-  font: 800 10px/1 var(--font-sans); letter-spacing: .26em; text-transform: uppercase;
+.v-info { position: absolute; left: 16px; right: 16px; bottom: 22px; }
+.v-info b { display: block; font: 600 clamp(15px, 1.15vw, 18px)/1.25 var(--font-sans); letter-spacing: -.005em; }
+.v-info small {
+  display: block; margin-top: 7px;
+  font: 400 11px/1.3 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: rgba(255, 255, 255, .62);
 }
+/* barra fina de progresso da prévia, na cor do vídeo */
+.v-progress { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(255, 255, 255, .12); }
+.v-progress i { position: absolute; inset: 0; background: var(--c); transform-origin: left; transform: scaleX(0); }
 
 /* ---------- MODO PALCO (vídeo com som) ----------
    prefixo "ps-" (palco stage): o hero já usa ".stage" — classes globais não podem colidir */
@@ -234,17 +180,15 @@
 
 /* ---------- responsivo ---------- */
 @media (max-width: 1024px) {
-  .palco { grid-template-columns: 1fr; padding-bottom: 72px; }
-  .palco-copy { padding-top: 110px; }
-  /* no celular as credenciais ficam numa fileira que rola para o lado */
-  .palco-rack {
-    justify-content: flex-start; height: auto;
-    margin: 0 calc(var(--gutter) * -1); padding: 0 var(--gutter) 24px;
+  .palco { grid-template-columns: 1fr; }
+  /* no celular os vídeos ficam numa fileira que desliza para o lado */
+  .v-grid {
+    display: flex; gap: 14px;
+    margin: 0 calc(var(--gutter) * -1); padding: 4px var(--gutter) 8px;
     overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
   }
-  .palco-rack::-webkit-scrollbar { display: none; }
-  .cred-hang { scroll-snap-align: center; }
-  .cred { width: min(62vw, 240px); }
+  .v-grid::-webkit-scrollbar { display: none; }
+  .v-grid > li { flex: 0 0 min(64vw, 260px); scroll-snap-align: center; }
 }
 @media (max-width: 760px) {
   .ps[open] { grid-template-columns: 1fr; grid-template-rows: auto auto; align-content: center; justify-items: center; padding: 64px 16px 24px; overflow-y: auto; }
@@ -254,5 +198,5 @@
   .ps-bar { margin-top: 14px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .cred-live::before { animation: none; }
+  .v-card, .v-media { transition: none; }
 }
