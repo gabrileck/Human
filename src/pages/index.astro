@@ -14,9 +14,9 @@ import mulher from '../assets/hero/mulher.webp';
 
 /*
 	Imagens da 1ª dobra geradas no build: AVIF (bem menor) com WebP de reserva,
-	em 3 larguras — o celular baixa a pequena, a tela grande baixa a grande.
+	em 4 larguras — o celular baixa a pequena, a tela grande baixa a grande.
 */
-const WIDTHS = [640, 960, 1254];
+const WIDTHS = [480, 768, 960, 1254];
 const PEOPLE_SIZES = '(max-width: 900px) min(104vw, 560px), min(64vw, 112vh)';
 
 async function responsive(src: ImageMetadata, sizes: string) {
@@ -39,9 +39,9 @@ const images = {
 	<Fragment slot="head">
 		<link rel="preload" as="image" type="image/avif" imagesrcset={images.wall.avif} imagesizes={images.wall.sizes} fetchpriority="high" />
 		<link rel="preload" as="image" type="image/avif" imagesrcset={images.woman.avif} imagesizes={images.woman.sizes} fetchpriority="high" />
-		<link rel="preload" as="image" type="image/avif" imagesrcset={images.man.avif} imagesizes={images.man.sizes} />
-		<!-- o modelo 3D é usado já na tela de carregamento: começa a baixar junto com o HTML -->
-		<link rel="preload" href={`${import.meta.env.BASE_URL}assets/logo-3d.glb`} as="fetch" crossorigin="anonymous" />
+		<link rel="preload" as="image" type="image/avif" imagesrcset={images.man.avif} imagesizes={images.man.sizes} fetchpriority="high" />
+		<!-- o modelo 3D NÃO entra aqui: ele é baixado depois da abertura (ver Dobra3D.jsx),
+		     para não disputar banda com as imagens da 1ª dobra -->
 	</Fragment>
 
 	<!-- Tela de carregamento: logo 3D se montando conforme o site carrega -->
@@ -56,11 +56,10 @@ const images = {
 
 	<!--
 		2ª dobra — client:load
-		Exceção à regra "abaixo da dobra = client:visible": a cena 3D é a parte mais pesada
-		do site (WebGL, modelo, shaders). Montá-la só ao aparecer travava a rolagem rápida.
-		Agora ela é montada e aquecida DURANTE a tela de carregamento (que espera por ela),
-		e o three.js/modelo já vêm do mesmo download da tela de carregamento.
-		Enquanto não está na tela, ela não desenha nada (IntersectionObserver interno).
+		O componente em si é minúsculo. O pesado (three.js + montagem e "aquecimento" da cena)
+		só começa na primeira interação (mouse, rolagem, toque, teclado) — a abertura da página
+		não executa nada de 3D, e a cena fica pronta antes de a pessoa chegar nela.
+		O modelo .glb é baixado logo depois da abertura. Fora da tela, não desenha nada.
 	-->
 	<Dobra3D client:load />
 

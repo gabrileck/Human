@@ -41,20 +41,23 @@ export default function Hero({ images }) {
       });
 
       tl
+        // Fotos: só movimento, sem fade — elas já estão desenhadas por baixo da cortina da tela
+        // de carregamento, que é quem faz a revelação (ver hero.css, "ESTADO INICIAL").
+
         // 1 · Parede. power2.out (curva mais suave que a padrão) + leve zoom-out:
         //     movimento lento e sem pressa = cenário pesado, que não "pula".
-        .fromTo(q('[data-in="wall"]'), { autoAlpha: 0, scale: 1.08 }, { ...show, scale: 1, duration: 1.6, ease: 'power2.out' })
+        .fromTo(q('[data-in="wall"]'), { scale: 1.08 }, { scale: 1, duration: 1.6, ease: 'power2.out' })
 
         // 2 · Estante. Começa 0.15 s depois do INÍCIO da parede ("<0.15"):
         //     as camadas de fundo andam quase juntas, como um bloco só.
-        .fromTo(q('[data-in="shelf"]'), { autoAlpha: 0, y: 40 }, { ...show, y: 0, duration: 1.3 }, '<0.15')
+        .fromTo(q('[data-in="shelf"]'), { y: 40 }, { y: 0, duration: 1.3 }, '<0.15')
 
         // 3 · Pessoas. expo.out: a curva mais "freada" do GSAP — percorre ~90% do caminho
         //     no primeiro terço e passa o resto do tempo assentando. Lê-se como algo pesado
         //     que pousa no chão. "-=0.9": entra quando a estante ainda está chegando (overlap).
-        .fromTo(q('[data-in="man"]'), { autoAlpha: 0, y: 90 }, { ...show, y: 0, duration: 1.5, ease: 'expo.out' }, '-=0.9')
+        .fromTo(q('[data-in="man"]'), { y: 90 }, { y: 0, duration: 1.5, ease: 'expo.out' }, '-=0.9')
         //     A mulher vem 0.12 s depois do homem ("<0.12"): o pequeno atraso cria profundidade.
-        .fromTo(q('[data-in="woman"]'), { autoAlpha: 0, y: 110 }, { ...show, y: 0, duration: 1.5, ease: 'expo.out' }, '<0.12')
+        .fromTo(q('[data-in="woman"]'), { y: 110 }, { y: 0, duration: 1.5, ease: 'expo.out' }, '<0.12')
 
         // 4 · Palavra gigante. sine.out: aceleração quase linear e final macio —
         //     sem "freada", parece leve, flutuando atrás das pessoas.
@@ -160,7 +163,7 @@ export default function Hero({ images }) {
           <span data-hero-in data-in="word">Realize</span>
         </div>
         <div class="layer l-man" data-depth="0.05" data-speed="0.05">
-          <Pic img={images.man} anim="man" />
+          <Pic img={images.man} anim="man" priority />
         </div>
         <div class="layer l-woman" data-depth="0.075" data-speed="0">
           <Pic img={images.woman} anim="woman" priority />

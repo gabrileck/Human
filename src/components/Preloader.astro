@@ -1,14 +1,28 @@
 ---
 // Tela de carregamento: HTML + CSS estáticos (aparecem no primeiro desenho, sem esperar JS).
-// O script em lib/preloader.js mede o carregamento, monta o logo 3D e faz a saída.
+// O script em lib/preloader.js mede o carregamento, monta o logo peça por peça e faz a saída.
+// As 17 peças são imagens renderizadas do modelo 3D (sem WebGL nesta tela).
+import pieces from '../lib/loader-pieces.json';
+const base = import.meta.env.BASE_URL;
 ---
 
 <div class="pl" id="preloader" role="progressbar" aria-label="Carregando o site" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
 	<div class="pl-glow" aria-hidden="true"></div>
-	<canvas class="pl-canvas" id="pl-canvas" aria-hidden="true"></canvas>
 
-	<!-- antes do 3D chegar: um anel girando no lugar do logo -->
-	<div class="pl-ring" aria-hidden="true"></div>
+	<div class="pl-stage" aria-hidden="true">
+		<div class="pl-logo" id="pl-logo">
+			{pieces.map((p) => (
+				<img class="pl-piece" src={`${base}assets/loader/${p.src}`} alt="" width={p.w} height={p.h} decoding="async"
+					srcset={`${base}assets/loader/${p.src.replace('.webp', '-s.webp')} ${Math.round(p.w / 2)}w, ${base}assets/loader/${p.src} ${p.w}w`}
+					sizes={`calc(min(52vw, 46vh, 420px) * ${(p.width / 100).toFixed(4)})`}
+					data-angle={p.angle} data-disc={p.disc ? '1' : '0'} data-center={p.center ? '1' : '0'}
+					style={`left:${p.left}%;top:${p.top}%;width:${p.width}%;height:${p.height}%`} />
+			))}
+		</div>
+	</div>
+
+	<!-- borda de baixo em curva da cortina de saída (só escala: não repinta) -->
+	<svg class="pl-curve" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M0 0 Q50 200 100 0 Z" fill="#030609" /></svg>
 
 	<header class="pl-top pl-ui">
 		<span class="pl-brand">Realize Human<i>.</i></span>
@@ -35,7 +49,8 @@
 		position: fixed; inset: 0; z-index: 100;
 		background: radial-gradient(120% 90% at 50% 38%, #0b1d2c 0%, #050b12 55%, #030609 100%);
 		color: #eef4f2;
-		overflow: hidden;
+		overflow: visible;          /* a curva da cortina fica logo abaixo da tela */
+		will-change: transform;
 	}
 	.loader-fallback .pl { display: none !important; }
 	html.is-loading { overflow: hidden; }
@@ -55,21 +70,23 @@
 	}
 	@keyframes pl-breathe { to { transform: translate(-50%, -50%) scale(1.08) rotate(25deg); opacity: 1; } }
 
-	.pl-canvas {
-		position: absolute; inset: 0; width: 100%; height: 100%; display: block;
-		opacity: 0; transition: opacity .8s ease;
-	}
-	.pl.has-3d .pl-canvas { opacity: 1; }
 
-	.pl-ring {
-		position: absolute; left: 50%; top: 40%; width: 64px; height: 64px; margin: -32px 0 0 -32px;
-		border-radius: 50%;
-		border: 1px solid rgba(238, 244, 242, .15); border-top-color: rgba(238, 244, 242, .8);
-		animation: pl-spin 1s linear infinite;
-		transition: opacity .4s ease;
+
+	/* logo montado com as peças (imagens) — perspectiva para o giro 3D em CSS */
+	.pl-stage { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); perspective: 1200px; }
+	.pl-logo {
+		/* --L = lado do logo; o JS move as peças em múltiplos dele (sem ler geometria).
+		   Mesma fórmula no `sizes` das peças (acima). */
+		--L: min(52vw, 46vh, 420px);
+		position: relative; width: var(--L); aspect-ratio: 1;
+		transform-style: preserve-3d; will-change: transform;
 	}
-	.pl.has-3d .pl-ring { opacity: 0; }
-	@keyframes pl-spin { to { transform: rotate(360deg); } }
+	.pl-piece { position: absolute; max-width: none; will-change: transform, opacity; backface-visibility: hidden; }
+	.js .pl-piece { opacity: 0; }
+	.pl-curve {
+		position: absolute; left: 0; top: 100%; width: 100%; height: 20vh;
+		transform: scaleY(0); transform-origin: 50% 0; will-change: transform; pointer-events: none;
+	}
 
 	.pl-top {
 		position: absolute; top: 0; left: 0; right: 0;
@@ -111,11 +128,11 @@
 
 	@media (max-width: 700px) {
 		.pl-meta { display: none; }
-		.pl-glow, .pl-ring { top: 36%; }
+		.pl-glow, .pl-stage { top: 36%; }
 		.pl-bottom { flex-direction: column; align-items: flex-start; gap: 18px; }
 		.pl-tag { padding-bottom: 0; }
 	}
 	@media (prefers-reduced-motion: reduce) {
-		.pl-glow, .pl-ring { animation: none; }
+		.pl-glow { animation: none; }
 	}
 </style>

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'preact/hooks';
+import { getModelBuffer } from '../lib/model-buffer.js';
 import '../styles/dobra3d.css';
 
 const WA = 'https://wa.me/5541997135842';
@@ -33,20 +34,39 @@ const SCENES = [
 ];
 
 /**
- * Segunda dobra. Hidratada com `client:visible`: este componente (e, a partir dele,
- * o three.js + o modelo) só é baixado quando a dobra se aproxima da tela.
+ * Segunda dobra. O componente é minúsculo; o pesado (three.js ~150 KB gzip + montagem da
+ * cena) só começa na PRIMEIRA INTERAÇÃO da pessoa (mexer o mouse, rolar, tocar, teclar).
+ * Assim a abertura da página não executa nada de 3D — e, como a dobra fica uma tela abaixo,
+ * dá tempo de ela estar pronta quando a pessoa chegar.
  */
+const TRIGGERS = ['pointermove', 'pointerdown', 'wheel', 'touchstart', 'keydown', 'scroll'];
+
 export default function Dobra3D() {
   const root = useRef(null);
 
   useEffect(() => {
     let dispose;
     let cancelled = false;
-    // segundo nível de "lazy": o three.js (~180 KB gzip) vem num chunk separado
-    import('../lib/dobra3d-scene.js').then(({ initDobra3D }) => {
-      if (!cancelled) dispose = initDobra3D(root.current);
-    });
-    return () => { cancelled = true; dispose?.(); };
+    let started = false;
+    const start = () => {
+      if (started) return;
+      started = true;
+      TRIGGERS.forEach((ev) => removeEventListener(ev, start));
+      import('../lib/dobra3d-scene.js').then(({ initDobra3D }) => {
+        if (!cancelled) dispose = initDobra3D(root.current);
+      });
+    };
+    TRIGGERS.forEach((ev) => addEventListener(ev, start, { passive: true }));
+    // o modelo (.glb) é só baixado logo depois da abertura, com a rede livre — fora do
+    // caminho das imagens da 1ª dobra, mas pronto antes de a pessoa chegar na dobra 3D
+    const idle = window.requestIdleCallback ?? ((fn) => setTimeout(fn, 300));
+    const prefetch = () => idle(() => getModelBuffer().catch(() => {}), { timeout: 3000 });
+    if (document.documentElement.classList.contains('site-go')) prefetch();
+    else addEventListener('site:go', prefetch, { once: true });
+    // já abriu rolado para baixo (voltar/atualizar a página no meio) ou com ?p= (abre direto
+    // num ponto da dobra 3D, para testes): começa logo
+    if (scrollY > 0 || new URLSearchParams(location.search).has('p')) start();
+    return () => { cancelled = true; TRIGGERS.forEach((ev) => removeEventListener(ev, start)); removeEventListener('site:go', prefetch); dispose?.(); };
   }, []);
 
   return (

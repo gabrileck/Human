@@ -1,16 +1,12 @@
-import { NeutralToneMapping, PMREMGenerator, SRGBColorSpace, WebGLRenderer } from 'three';
+import {
+  HalfFloatType, Mesh, NeutralToneMapping, OrthographicCamera, PMREMGenerator, PerspectiveCamera, SRGBColorSpace, WebGLRenderTarget, WebGLRenderer,
+} from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 /*
-  UM único WebGL para o site inteiro.
-  A tela de carregamento e a dobra 3D usam o mesmo renderer/canvas: primeiro a tela de
-  carregamento desenha nele; quando ela sai, o canvas é entregue para a dobra 3D.
-  Ganhos (medidos): o ambiente de luz é gerado uma vez só, shaders em comum compilam uma
-  vez só, e os dois não disputam a placa de vídeo — era isso que congelava a tela de
-  carregamento por até 2 s no primeiro acesso.
-
-  `owner` diz quem está desenhando no canvas agora ('loader' | 'dobra3d' | null).
-  Quem libera chama `handoff()`, que avisa com o evento `gl:handoff`.
+  O WebGL do site (um só contexto, criado sob demanda pela dobra 3D).
+  A tela de carregamento não usa mais WebGL (o logo dela são imagens), então a dobra 3D
+  é a dona do canvas desde o começo.
 */
 
 let shared = null;
@@ -19,27 +15,49 @@ export function getGL() {
   if (shared) return shared;
   const canvas = document.createElement('canvas');
   canvas.setAttribute('aria-hidden', 'true');
-  // alpha: a tela de carregamento é transparente sobre o fundo em CSS;
-  // antialias off: a dobra 3D suaviza as bordas nas próprias texturas (MSAA).
+  // antialias off: a dobra 3D suaviza as bordas nas próprias texturas (MSAA)
   const renderer = new WebGLRenderer({ canvas, alpha: true, antialias: false, powerPreference: 'high-performance' });
   renderer.outputColorSpace = SRGBColorSpace;
   renderer.toneMapping = NeutralToneMapping;
-
-  const pmrem = new PMREMGenerator(renderer);
-  const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;   // reflexos (vidro, verniz)
-  pmrem.dispose();
-
-  // a tela de carregamento reserva o canvas assim que começa (window.__glReserved),
-  // antes mesmo do three.js chegar — senão a dobra 3D poderia pegá-lo primeiro
-  shared = { canvas, renderer, env, owner: window.__glReserved ? 'loader' : null };
-  window.__glShared = shared;
+  shared = { canvas, renderer, owner: null, env: null };
   return shared;
 }
 
-/** Quem estava usando o canvas devolve; o próximo dono assume no evento `gl:handoff`. */
-export function handoff() {
-  window.__glReserved = false;
-  if (!shared) return;
-  shared.owner = null;
-  window.dispatchEvent(new Event('gl:handoff'));
+/**
+ * Ambiente de reflexos (vidro, verniz), gerado uma vez. Promise<Texture>.
+ *
+ * Gerar o PMREM direto (pmrem.fromScene) travava a página ~1 s: os shaders de desfoque dele são
+ * compilados no primeiro uso e a página fica parada esperando a placa de vídeo. Aqui eles são
+ * compilados ANTES, em paralelo (compileAsync — a página continua respondendo), e a geração em si
+ * vira só desenho.
+ * (Usa partes internas do PMREMGenerator do three r0.180: _setSize/_allocateTargets/_lodPlanes/
+ * _blurMaterial. Se atualizar o three, conferir.)
+ */
+let envPromise = null;
+export function getEnv() {
+  envPromise ??= (async () => {
+    await new Promise((r) => setTimeout(r, 0));   // fora da tarefa que avalia o three.js
+    const { renderer } = getGL();
+    const pmrem = new PMREMGenerator(renderer);
+    const room = new RoomEnvironment();
+
+    // cria o material de desfoque no tamanho que o fromScene vai usar (256, o padrão)
+    pmrem._setSize(256);
+    pmrem._allocateTargets().dispose();
+
+    // compila na mesma variante do uso real: desenhando numa textura de meia precisão
+    const rt = new WebGLRenderTarget(16, 16, { type: HalfFloatType });
+    renderer.setRenderTarget(rt);
+    await renderer.compileAsync(room, new PerspectiveCamera(90, 1, 0.1, 100));
+    await renderer.compileAsync(new Mesh(pmrem._lodPlanes[0], pmrem._blurMaterial), new OrthographicCamera());
+    renderer.setRenderTarget(null);
+    rt.dispose();
+
+    const env = pmrem.fromScene(room, 0.04).texture;
+    pmrem.dispose();
+    room.dispose();
+    getGL().env = env;
+    return env;
+  })();
+  return envPromise;
 }

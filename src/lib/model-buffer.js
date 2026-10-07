@@ -1,6 +1,6 @@
 // Baixa o logo-3d.glb UMA vez por página e compartilha o resultado.
-// A tela de carregamento e a dobra 3D pedem o mesmo arquivo: quem chegar primeiro baixa,
-// o outro recebe o mesmo ArrayBuffer. Não importa o three.js — fica leve para a tela de carregamento.
+// O download antecipado (Dobra3D.jsx, logo depois da abertura) e a cena 3D pedem o mesmo arquivo:
+// quem chegar primeiro baixa, o outro recebe o mesmo ArrayBuffer. Não importa o three.js — é leve.
 
 export const MODEL_URL = `${import.meta.env.BASE_URL}assets/logo-3d.glb`;
 
