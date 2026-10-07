@@ -5,7 +5,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { getModelBuffer } from './model-buffer.js';
 import { MeshSurfaceSampler } from 'three/addons/math/MeshSurfaceSampler.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
-import { getGL } from './gl.js';
+import { getEnv, getGL } from './gl.js';
 
 /* ============================================================
    CONFIGURAÇÃO
@@ -35,12 +35,13 @@ const startP = new URLSearchParams(location.search).get('p'); // ?p=1.5 abre já
 const $ = (id) => section.querySelector('#' + id);
 const cleanups = [];
 let disposed = false, rafId = 0;
+let ready = false;   // só desenha depois que o modelo foi montado e os shaders aquecidos
 
 /* ============================================================
    RENDERER / CENA
    ============================================================ */
 const sticky = section.querySelector('.t3d-sticky');
-// WebGL compartilhado com a tela de carregamento (lib/gl.js): o canvas chega quando ela sai
+// WebGL do site (lib/gl.js): um contexto só, criado sob demanda
 const gl = getGL();
 const { renderer, canvas } = gl;
 let owns = false;
@@ -209,16 +210,23 @@ const add = (parent, obj, layer) => { obj.layers.set(layer); parent.add(obj); re
 
 const $loader = $('t3d-loader');
 const nextTask = () => new Promise(r => setTimeout(r, 0));   // devolve a vez ao navegador (scroll sem engasgo)
+// para laços longos: devolve a vez só quando a fatia atual passou de ~12 ms
+let sliceT = 0;
+const slice = async () => { if (performance.now() - sliceT > 12) { await nextTask(); sliceT = performance.now(); } };
 
 async function buildModel() {
+  // o ambiente de reflexos é preparado em paralelo com o download/leitura do modelo
+  const envReady = getEnv();
   // o .glb vem comprimido (meshopt + quantização): ~250 KB em vez de 4,8 MB
-  // o arquivo é o mesmo que a tela de carregamento já baixou: vem do mesmo download, sem rede
+  // normalmente já foi baixado logo depois da abertura (Dobra3D.jsx): vem do mesmo download
   const buffer = await getModelBuffer((p) => { $('t3d-pct').textContent = ' ' + Math.round(p * 100) + '%'; });
+  if (disposed) return;
+  await nextTask();   // ler o modelo numa tarefa separada da avaliação do three.js
   if (disposed) return;
   const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(buffer, '');
   if (disposed) return;
   await nextTask();
-  scene.environment = gl.env;   // ambiente de luz já gerado uma vez em lib/gl.js
+  scene.environment = await envReady;   // ambiente de reflexos (lib/gl.js), gerado uma vez
   await nextTask();
   if (disposed) return;
   const model = gltf.scene;
@@ -234,7 +242,9 @@ async function buildModel() {
   model.traverse(o => { if (o.isMesh) meshes.push(o); });
 
   // distribui os pontos do glitter proporcionalmente à área de cada peça
-  const samplers = meshes.map(m => new MeshSurfaceSampler(m).build());
+  const samplers = [];
+  for (const m of meshes) { samplers.push(new MeshSurfaceSampler(m).build()); await slice(); }
+  if (disposed) return;
   // (a área vem na escala comprimida de cada peça; × escala² volta para a medida real)
   const areas = samplers.map((sm, k) => sm.distribution[sm.distribution.length - 1] * meshes[k].scale.x ** 2 * (/Disco/.test(meshes[k].name) ? 1.6 : 1));
   const totalArea = areas.reduce((a, b) => a + b, 0);
@@ -248,6 +258,8 @@ async function buildModel() {
     o.layers.disableAll();           // o original não aparece; os "clones" abaixo sim
 
     const edges = new EdgesGeometry(o.geometry, 25);
+    await nextTask();                // cada peça em passos curtos: a rolagem não engasga
+    if (disposed) return;
 
     // 0 · vidro
     add(o, new Mesh(o.geometry, glassMat), 0);
@@ -260,6 +272,7 @@ async function buildModel() {
     const count = Math.round(TOTAL * areas[idx] / totalArea);
     const pos = new Float32Array(count * 3), rnd = new Float32Array(count);
     for (let k = 0; k < count; k++) {
+      if ((k & 2047) === 0) { await slice(); if (disposed) return; }
       samplers[idx].sample(p, n);
       p.addScaledVector(n, 0.0006 / q);
       pos[k * 3] = p.x; pos[k * 3 + 1] = p.y; pos[k * 3 + 2] = p.z;
@@ -290,18 +303,47 @@ async function buildModel() {
   // Compila os shaders em segundo plano JÁ na variante que será usada: as cenas desenham em
   // texturas (rtA) e só a composição desenha na tela. Compilar com o alvo errado fazia o
   // navegador recompilar de forma síncrona no 1º quadro (eram as travadas de 600 ms).
-  for (let k = 0; k < N; k++) {
-    camera.layers.set(k);
-    renderer.setRenderTarget(rtA);
-    await renderer.compileAsync(scene, camera, scene);
+  // Um objeto por vez (a variante do shader não depende da camada, só do alvo), com pausas:
+  // compilar a cena inteira de uma vez era uma tarefa de ~130 ms.
+  const toCompile = [];
+  scene.traverse((o) => { if (o.material) toCompile.push(o); });
+  renderer.setRenderTarget(rtA);
+  for (const o of toCompile) {
+    await renderer.compileAsync(o, camera, scene);
     if (disposed) return;
+    await slice();
+    renderer.setRenderTarget(rtA);   // (alguém pode ter desenhado entre uma pausa e outra)
   }
   renderer.setRenderTarget(null);
   await renderer.compileAsync(compScene, compCam);
   if (disposed) return;
 
-  // "Aquece" cada cena: desenha uma vez fora da vista para criar agora (durante a tela de
-  // carregamento) as texturas e buffers que o primeiro quadro precisaria.
+  // "Aquece" cada shader desenhando-o sozinho, um por tarefa. No Windows (ANGLE/Direct3D) a
+  // compilação só termina no 1º desenho de verdade — e o modelo quantizado exige variantes
+  // próprias. Desenhar a cena inteira de uma vez travava a página ~600 ms; um shader por vez
+  // são passos curtos, com a rolagem respondendo entre eles.
+  const WARM = 31;                          // camada temporária, só para o aquecimento
+  const seen = new Set();
+  const warmList = [];
+  scene.traverse((o) => {
+    if (!o.material || o.layers.mask === 0) return;
+    const prog = renderer.properties.get(o.material).currentProgram;
+    const k = `${prog?.id ?? o.material.uuid}|${o.type}|${o.geometry.uuid === undefined ? '' : Object.keys(o.geometry.attributes).join()}`;
+    if (seen.has(k)) return;
+    seen.add(k); warmList.push(o);
+  });
+  for (const o of warmList) {
+    const mask = o.layers.mask;
+    o.layers.set(WARM); camera.layers.set(WARM);
+    renderer.setRenderTarget(rtA);
+    renderer.render(scene, camera);
+    o.layers.mask = mask;
+    await nextTask();
+    if (disposed) return;
+  }
+  renderer.setRenderTarget(null);
+
+  // e cada cena inteira uma vez (agora barato), criando as texturas que o 1º quadro precisaria
   for (let k = 0; k < N; k++) {
     camera.layers.set(k);
     renderer.setRenderTarget(k % 2 ? rtB : rtA);
@@ -311,9 +353,8 @@ async function buildModel() {
     if (disposed) return;
   }
 
+  ready = true;
   $loader.classList.add('done');
-  window.__dobra3dReady = true;
-  window.dispatchEvent(new Event('dobra3d:ready'));   // a tela de carregamento espera por isso
 }
 
 if (location.protocol === 'file:') {
@@ -384,7 +425,7 @@ const inners = layers.map(l => l.querySelector('.t3d-inner'));
 let W = 0, H = 0, top0 = 0;
 function resize() {
   W = sticky.clientWidth; H = sticky.clientHeight;
-  if (owns) renderer.setSize(W, H, false);   // enquanto a tela de carregamento usa o canvas, não mexe nele
+  if (owns) renderer.setSize(W, H, false);
   rtA.setSize(Math.round(W * PR), Math.round(H * PR));
   rtB.setSize(Math.round(W * PR), Math.round(H * PR));
   camera.aspect = W / H; camera.updateProjectionMatrix();
@@ -403,7 +444,7 @@ function setQuality(pr) {
   if (owns) renderer.setPixelRatio(pr);
   resize();
 }
-// assume o canvas compartilhado: agora (se a tela de carregamento não existe) ou quando ela sair
+// coloca o canvas do WebGL no lugar do <canvas> da dobra
 function takeCanvas() {
   if (owns || disposed) return;
   owns = true;
@@ -417,8 +458,12 @@ function takeCanvas() {
 addEventListener('resize', resize, { passive: true });
 cleanups.push(() => removeEventListener('resize', resize));
 resize();
-if (!gl.owner) takeCanvas();
-else { addEventListener('gl:handoff', takeCanvas); cleanups.push(() => removeEventListener('gl:handoff', takeCanvas)); }
+takeCanvas();
+// Prepara já as texturas de render (com MSAA): na 1ª vez o navegador faz consultas síncronas à
+// placa de vídeo. Feito agora, com a GPU livre, é instantâneo; feito depois, ficaria esperando na
+// fila atrás das compilações de shader em paralelo (eram ~400 ms de página parada).
+renderer.initRenderTarget(rtA);
+renderer.initRenderTarget(rtB);
 // se o hero mudar de altura (fontes/imagens carregando, celular), recalcula onde a dobra começa
 const heroEl = document.querySelector('.hero');
 if (heroEl) {
@@ -467,7 +512,7 @@ function frame(now) {
   uTime.value += dt;
 
   smooth += (scrollY - top0 - smooth) * ease(dt, 12);   // o Lenis já suaviza a rolagem; aqui só um toque
-  if (!visible || !owns) return;
+  if (!visible || !owns || !ready) return;
   if (scrollY - top0 > H * (SEG * (N - 1) + 1) + 2) return;   // já coberto pela dobra do método
   mx += (tx - mx) * ease(dt, 3);
   my += (ty - my) * ease(dt, 3);

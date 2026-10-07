@@ -23,9 +23,11 @@ const base = import.meta.env.BASE_URL;
 		<link rel="icon" type="image/svg+xml" href={`${base}favicon.svg`} />
 		<meta name="generator" content={Astro.generator} />
 
-		<!-- fontes do próprio site; pré-carregadas só as da tela de carregamento e da 1ª dobra -->
-		<Font cssVariable="--font-serif" preload />
-		<Font cssVariable="--font-sans" preload={[{ weight: '400' }, { weight: '600' }]} />
+		<!-- fontes do próprio site. Pré-carregadas SÓ as que a tela de carregamento mostra
+		     (marca, contador, legendas): as do texto da 1ª dobra ficam por baixo da tela de
+		     carregamento e não devem disputar banda com as fotos (que são o LCP) -->
+		<Font cssVariable="--font-serif" preload={[{ weight: '400', style: 'normal' }]} />
+		<Font cssVariable="--font-sans" />
 		<Font cssVariable="--font-grotesk" preload />
 		<Font cssVariable="--font-mono" preload={[{ weight: '400' }]} />
 		<Font cssVariable="--font-display" />

@@ -163,7 +163,10 @@
 .badge small { font-size: 12px; color: var(--ink-soft); }
 
 /* ---------- ESTADO INICIAL DA ENTRADA (o GSAP leva até o estado final) ---------- */
-.js [data-hero-in] { opacity: 0; visibility: hidden; }
+/* As FOTOS não começam escondidas: são desenhadas assim que chegam, por baixo da tela de
+   carregamento (que já as cobre). Assim o navegador conta a maior imagem da página (LCP) no
+   momento em que ela fica pronta. A entrada delas é só movimento (zoom/subida). */
+.js [data-hero-in]:not(img) { opacity: 0; visibility: hidden; }
 .js .hero h1 .line > span { transform: translateY(110%); }
 .anim-fallback [data-hero-in] { opacity: 1 !important; visibility: visible !important; transform: none !important; }
 .anim-fallback .hero h1 .line > span { transform: none !important; }
