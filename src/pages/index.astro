@@ -6,11 +6,16 @@ import Hero from '../components/Hero.jsx';
 import Dobra3D from '../components/Dobra3D.jsx';
 import Metodo from '../components/Metodo.jsx';
 import Palco from '../components/Palco.jsx';
+import Bastidores from '../components/Bastidores.jsx';
 
 import parede from '../assets/hero/parede.webp';
 import estante from '../assets/hero/estante.webp';
 import homem from '../assets/hero/homem.webp';
 import mulher from '../assets/hero/mulher.webp';
+import ladoALado from '../assets/bastidores/lado-a-lado.png';
+import palestra from '../assets/bastidores/palestra.png';
+import posicao from '../assets/bastidores/posicao.png';
+import reuniao from '../assets/bastidores/reuniao.png';
 
 /*
 	Imagens da 1ª dobra geradas no build: AVIF (bem menor) com WebP de reserva,
@@ -19,10 +24,10 @@ import mulher from '../assets/hero/mulher.webp';
 const WIDTHS = [480, 768, 960, 1254];
 const PEOPLE_SIZES = '(max-width: 900px) min(104vw, 560px), min(64vw, 112vh)';
 
-async function responsive(src: ImageMetadata, sizes: string) {
+async function responsive(src: ImageMetadata, sizes: string, widths = WIDTHS) {
 	const [avif, webp] = await Promise.all([
-		getImage({ src, widths: WIDTHS, format: 'avif', quality: 60 }),
-		getImage({ src, widths: WIDTHS, format: 'webp', quality: 78 }),
+		getImage({ src, widths, format: 'avif', quality: 60 }),
+		getImage({ src, widths, format: 'webp', quality: 78 }),
 	]);
 	return { avif: avif.srcSet.attribute, webp: webp.srcSet.attribute, src: webp.src, sizes };
 }
@@ -32,6 +37,16 @@ const images = {
 	shelf: await responsive(estante, PEOPLE_SIZES),
 	man: await responsive(homem, PEOPLE_SIZES),
 	woman: await responsive(mulher, PEOPLE_SIZES),
+};
+
+// fotos da 5ª dobra (polaroides): ocupam ~1/6 da tela no desktop e ~metade no celular
+const PRINT_WIDTHS = [240, 360, 540];
+const PRINT_SIZES = '(max-width: 900px) min(46vw, 250px), 17vw';
+const prints = {
+	ladoALado: await responsive(ladoALado, PRINT_SIZES, PRINT_WIDTHS),
+	palestra: await responsive(palestra, PRINT_SIZES, PRINT_WIDTHS),
+	posicao: await responsive(posicao, PRINT_SIZES, PRINT_WIDTHS),
+	reuniao: await responsive(reuniao, PRINT_SIZES, PRINT_WIDTHS),
 };
 ---
 
@@ -77,4 +92,12 @@ const images = {
 		só são baixados quando alguém abre o "modo palco".
 	-->
 	<Palco client:visible={{ rootMargin: '50% 0px 50% 0px' }} />
+
+	<!--
+		5ª dobra — client:visible
+		Bastidores: polaroides numa mesa + o vídeo da Jornada tocando mudo, com as palavras do
+		vídeo impressas na mesa em sincronia. Hidrata 1 tela antes, para a "lâmpada" já estar
+		apagada quando a seção surgir. O vídeo com som só baixa ao clicar.
+	-->
+	<Bastidores client:visible={{ rootMargin: '100% 0px 100% 0px' }} images={prints} />
 </Layout>
