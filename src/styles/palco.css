@@ -15,6 +15,14 @@
     linear-gradient(180deg, var(--seam) 0%, #04070d 45%, #04060b 100%);
   overflow: hidden;
   isolation: isolate;
+  /* Fora da tela, o navegador não calcula o layout desta seção (nem na abertura, nem quando as
+     fontes chegam): reserva só o tamanho. `auto` lembra a altura real depois da 1ª vez.
+     (Seguro aqui: já tem overflow hidden, e o player é um <dialog> modal, na camada de cima.) */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 100vh;
+}
+@media (max-width: 1024px) {
+  .palco { contain-intrinsic-size: auto 1180px; }   /* no celular, a galeria empilha (~1,4 tela) */
 }
 
 /* ---------- texto ---------- */
