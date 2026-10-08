@@ -1,0 +1,154 @@
+/* ---------- DOBRA 5: MANIFESTO ---------- */
+.mf {
+  --fg: #eef4f2;
+  --muted: rgba(238, 244, 242, .6);
+  --gutter: clamp(16px, 5.5vw, 88px);
+  /* as cores do logo, na ordem do "HUMAN" do vídeo */
+  --brand: linear-gradient(90deg, #3d9be9 0%, #8e5bd8 26%, #e2457a 50%, #f39a34 74%, #3cb44b 100%);
+  position: relative; z-index: 4;
+  min-height: 100vh; min-height: 100svh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) auto;
+  grid-template-areas: "head media" "body media" "foot foot";
+  grid-template-rows: auto 1fr auto;
+  column-gap: clamp(32px, 6vw, 110px);
+  padding: clamp(80px, 12vh, 130px) var(--gutter) 0;
+  color: var(--fg);
+  /* começa na mesma cor em que a dobra 4 termina: sem risco entre as dobras */
+  background: linear-gradient(180deg, #04060b 0%, #05070f 55%, #020306 100%);
+  overflow: hidden;
+  isolation: isolate;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 100vh;
+}
+
+/* brilho suave com as cores do logo atrás do vídeo (estático: não repinta) */
+.mf-glow {
+  position: absolute; z-index: -1; right: calc(var(--gutter) - 8vw); top: 6%;
+  width: min(60vw, 820px); aspect-ratio: 1; pointer-events: none;
+  background:
+    radial-gradient(closest-side at 32% 30%, rgba(61, 155, 233, .16), transparent),
+    radial-gradient(closest-side at 72% 38%, rgba(226, 69, 122, .14), transparent),
+    radial-gradient(closest-side at 40% 74%, rgba(60, 180, 75, .1), transparent),
+    radial-gradient(closest-side at 74% 72%, rgba(243, 154, 52, .1), transparent);
+}
+
+/* ---------- cabeçalho ---------- */
+.mf-head { grid-area: head; align-self: end; }
+.mf-kicker {
+  display: flex; align-items: center; gap: 12px;
+  font: 400 11px/1 var(--font-mono); letter-spacing: .22em; text-transform: uppercase; color: var(--muted);
+}
+.mf-kicker::before { content: ""; width: 26px; height: 1px; background: currentColor; }
+.mf-title {
+  margin-top: 22px;
+  font-family: var(--font-serif); font-weight: 400;
+  font-size: clamp(40px, 4.6vw, 72px); line-height: .98; letter-spacing: -.025em;
+}
+.mf-title .ln { display: block; overflow: hidden; padding-bottom: .08em; }
+.mf-title .ln > span { display: inline-block; }
+.mf-title em { background: var(--brand); -webkit-background-clip: text; background-clip: text; color: transparent; padding-right: .04em; }
+
+/* ---------- palavras do manifesto ---------- */
+.mf-body { grid-area: body; align-self: start; padding-top: clamp(28px, 4.5vh, 48px); }
+.mf-words { display: flex; flex-wrap: wrap; gap: .12em .32em; max-width: 760px; font-size: clamp(26px, 3.1vw, 50px); }
+.mf-word {
+  font: 900 1em/1.02 var(--font-display); letter-spacing: -.01em; text-transform: uppercase;
+  padding: 0; border: 0; background: none; cursor: pointer;
+  /* ainda não dita: bem apagada */
+  color: rgba(238, 244, 242, .13);
+  transition: color .35s ease;
+}
+.mf-word:hover { color: rgba(238, 244, 242, .45); }
+.mf-word:focus-visible { outline: 2px solid #e2457a; outline-offset: 4px; border-radius: 4px; }
+/* já dita: branca */
+.mf-word.is-past { color: rgba(238, 244, 242, .88); }
+/* sendo dita agora: as cores do logo */
+.mf-word.is-on {
+  background: var(--brand); -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+}
+/* fim do vídeo (o logo se monta): o manifesto inteiro fica aceso */
+.mf.is-end .mf-word { color: rgba(238, 244, 242, .95); }
+
+.mf-hint {
+  margin-top: 22px;
+  font: 400 11px/1.5 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: rgba(238, 244, 242, .42);
+}
+.mf-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 26px; margin-top: 30px; }
+.mf-cta {
+  display: inline-flex; align-items: center; gap: 12px;
+  padding: 16px 24px; border-radius: 999px;
+  font: 600 14px/1 var(--font-sans); color: #fff; text-decoration: none;
+  background: linear-gradient(90deg, #3d9be9, #8e5bd8 45%, #e2457a);
+  transition: transform .25s ease, filter .25s ease;
+}
+.mf-cta:hover { transform: translateY(-2px); filter: brightness(1.08); }
+.mf-top {
+  font: 400 11px/1 var(--font-mono); letter-spacing: .16em; text-transform: uppercase;
+  color: var(--muted); text-decoration: none; transition: color .25s ease;
+}
+.mf-top:hover { color: var(--fg); }
+
+/* ---------- vídeo ---------- */
+.mf-media { grid-area: media; align-self: center; margin: 0; }
+.mf-frame {
+  position: relative; height: min(78vh, 760px); aspect-ratio: 9 / 16;
+  border-radius: 22px; overflow: hidden; background: #0a0d14;
+  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, .8), 0 0 0 1px rgba(255, 255, 255, .08);
+}
+.mf-frame video { display: block; width: 100%; height: 100%; object-fit: cover; cursor: pointer; }
+.mf-tag {
+  display: block; margin-top: 14px; text-align: center;
+  font: 400 10px/1.4 var(--font-mono); letter-spacing: .16em; text-transform: uppercase; color: rgba(238, 244, 242, .45);
+}
+.mf-play {
+  position: absolute; inset: 0; margin: auto; width: 76px; height: 76px; border-radius: 50%;
+  display: grid; place-items: center; cursor: pointer; color: #fff;
+  border: 1px solid rgba(255, 255, 255, .35); background: rgba(10, 13, 20, .45);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  transition: transform .25s ease, background .25s ease;
+}
+.mf-play svg { width: 26px; height: 26px; margin-left: 3px; }
+.mf-play:hover { transform: scale(1.06); background: rgba(10, 13, 20, .65); }
+.mf-sound {
+  position: absolute; left: 14px; top: 14px;
+  display: inline-flex; align-items: center; gap: 9px; padding: 10px 14px 10px 12px; border-radius: 999px;
+  font: 600 12px/1 var(--font-sans); color: #fff; cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, .28); background: rgba(10, 13, 20, .55);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  transition: background .25s ease, border-color .25s ease;
+}
+.mf-sound svg { width: 16px; height: 16px; }
+.mf-sound:hover { background: rgba(10, 13, 20, .75); border-color: rgba(255, 255, 255, .5); }
+.mf-sound.is-on { border-color: transparent; background: linear-gradient(90deg, #3d9be9, #8e5bd8 45%, #e2457a); }
+.mf-play:focus-visible, .mf-sound:focus-visible { outline: 2px solid #e2457a; outline-offset: 3px; }
+.mf-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(255, 255, 255, .14); }
+.mf-bar i { position: absolute; inset: 0; transform-origin: left; transform: scaleX(0); background: var(--brand); }
+
+/* ---------- rodapé ---------- */
+.mf-foot {
+  grid-area: foot;
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 10px 24px;
+  margin-top: clamp(56px, 9vh, 96px); padding: 24px 0 28px; border-top: 1px solid rgba(238, 244, 242, .08);
+  font: 400 11px/1.5 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: rgba(238, 244, 242, .45);
+}
+.mf-brand { font: 400 22px/1 var(--font-serif); letter-spacing: -.01em; text-transform: none; color: var(--fg); }
+.mf-brand i { color: #e2457a; font-style: normal; }
+
+/* ---------- responsivo ---------- */
+@media (max-width: 1024px) {
+  .mf {
+    grid-template-columns: 1fr;
+    grid-template-areas: "head" "media" "body" "foot";
+    grid-template-rows: auto;
+    contain-intrinsic-size: auto 1700px;
+  }
+  .mf-media { justify-self: center; margin-top: 32px; }
+  .mf-frame { height: min(72vh, 620px); max-width: calc(100vw - 2 * var(--gutter)); }
+  .mf-glow { right: -20vw; top: 22%; width: 120vw; }
+  .mf-words { font-size: clamp(26px, 7.2vw, 44px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mf-word, .mf-cta, .mf-play, .mf-sound { transition: none; }
+}
