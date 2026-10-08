@@ -167,10 +167,6 @@ export default function Manifesto() {
         </div>
       </div>
 
-      <footer class="mf-foot" data-mf-in>
-        <span class="mf-brand">Realize Human<i>.</i></span>
-        <span>Consultoria de RH estratégico · Comunicação consciente · Relações humanas</span>
-      </footer>
     </section>
   );
 }

@@ -7,6 +7,7 @@ import Dobra3D from '../components/Dobra3D.jsx';
 import Metodo from '../components/Metodo.jsx';
 import Palco from '../components/Palco.jsx';
 import Manifesto from '../components/Manifesto.jsx';
+import Conteudos from '../components/Conteudos.jsx';
 
 import parede from '../assets/hero/parede.webp';
 import estante from '../assets/hero/estante.webp';
@@ -85,4 +86,11 @@ const images = {
 		O vídeo (~9 MB) só é baixado quando chega na tela, e toca mudo; o som é opcional.
 	-->
 	<Manifesto client:visible={{ rootMargin: '50% 0px 50% 0px' }} />
+
+	<!--
+		6ª dobra — client:visible
+		Central de conteúdos (editorial): destaque + índice dos artigos do blog, abas por categoria.
+		Fecha o site (rodapé).
+	-->
+	<Conteudos client:visible={{ rootMargin: '50% 0px 50% 0px' }} />
 </Layout>
