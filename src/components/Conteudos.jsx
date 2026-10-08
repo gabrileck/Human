@@ -33,23 +33,39 @@ const ARTIGOS = [
     'Cultura não é o que está escrito na parede. É o comportamento que se repete quando o líder não está na sala.'),
 ];
 
+// cada método aponta para o artigo do blog que o aprofunda
+const metodo = (id, title, ex, artigo) => ({
+  id, cat: 'Método', title, ex, cover: `${base}conteudos/artigo-${artigo}.webp`, href: `${BLOG}/${artigo}`, ext: true, cta: 'Entender o método',
+});
+const METODOS = [
+  metodo('m-hunter', 'Realize Hunter™', 'Vai além do currículo e da entrevista: mapeamos o perfil comportamental que sua empresa precisa antes de buscar qualquer candidato. Contratação com critério, não com feeling.', 12),
+  metodo('m-assessment', 'Assessment', 'Revela o que o cargo não mostra: como a pessoa decide, lidera e performa sob pressão. Antes de contratar, antes de promover.', 11),
+  metodo('m-pdl', 'Mentoria PDL — Desenvolvimento de Líderes', 'Para quem já lidera, mas ainda opera como executor: postura, decisão e presença para parar de fazer e começar a dirigir.', 13),
+  metodo('m-bpo', 'BPO Estratégico de RH', 'A inteligência de gestão de pessoas dentro da sua empresa, sem montar um departamento do zero. Você foca no negócio.', 14),
+];
+
+const recorte = (id, title, who, poster) => ({
+  id, cat: 'Evento', who, title, cover: `${base}videos/${poster}`, href: '#palco', cta: 'Assistir',
+});
+const EVENTOS = [
+  { id: 'jornada', cat: 'Evento', title: '6ª Jornada Farmacêutica — Realize Human × Grupo SPN',
+    ex: 'Comunicação, relações humanas e o que faz as pessoas travarem — dito ao vivo, para quem lidera.',
+    cover: `${base}videos/palco-1.webp`, href: '#palco', cta: 'Assistir aos recortes' },
+  recorte('e-1', 'Comunicação que transforma relações', 'Realize Human × Grupo SPN', 'palco-1.webp'),
+  recorte('e-2', 'Por que você trava na hora de falar?', 'Gisele Novaes', 'palco-2.webp'),
+  recorte('e-3', 'Você só fala — ou se comunica?', 'Gisele Novaes', 'palco-comunicacao.webp'),
+];
+
 // categorias ainda sem publicações no blog: estado "em preparação" com aviso pelo WhatsApp
 const TABS = [
-  { key: 'Artigos', items: ARTIGOS },
+  { key: 'Artigos', items: ARTIGOS, more: 'Mais artigos' },
   { key: 'Testes', soon: 'testes e diagnósticos' },
   { key: 'Ebooks', soon: 'ebooks' },
-  { key: 'Métodos', note: 'Novos métodos e ferramentas estão em preparação.', items: [{
-    id: 'metodo', cat: 'Método', date: '', title: 'O método Realize Human', art: 'Método',
-    ex: 'Como estruturamos liderança, cultura e contratação, passo a passo — sem soluções genéricas.',
-    href: '#metodo', cta: 'Conhecer o método',
-  }] },
+  { key: 'Métodos', items: METODOS, more: 'Outros métodos' },
   { key: 'Hub de Liderança', soon: 'materiais do Hub de Liderança' },
-  { key: 'Eventos', note: 'Os próximos eventos serão anunciados aqui.', items: [{
-    id: 'jornada', cat: 'Evento', date: '', title: '6ª Jornada Farmacêutica — Realize Human × Grupo SPN',
-    ex: 'Comunicação, relações humanas e o que faz as pessoas travarem — dito ao vivo, para quem lidera.',
-    cover: `${base}videos/palco-1.webp`, href: '#palco', cta: 'Assistir aos recortes',
-  }] },
+  { key: 'Eventos', items: EVENTOS, more: 'Recortes do palco' },
 ];
+const COVERS = TABS.flatMap((t) => t.items || []).filter((it) => it.cover);
 
 const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 const fmt = (iso) => (iso ? `${+iso.slice(8, 10)} ${MONTHS[+iso.slice(5, 7) - 1]} ${iso.slice(0, 4)}` : '');
@@ -171,14 +187,14 @@ export default function Conteudos() {
 
               {rest.length > 0 ? (
                 <div class="ct-index">
-                  <span class="ct-index-label">Mais artigos</span>
+                  <span class="ct-index-label">{T.more}</span>
                   <ol onPointerLeave={() => setHover(null)}>
                     {list.map((it, i) => (
                       <li key={it.id}>
                         <a href={it.href} {...linkProps(it)} onPointerEnter={() => setHover(it)}>
                           <span class="ct-n">{String(i + 2).padStart(2, '0')}</span>
                           <span class="ct-it">
-                            <span class="ct-meta"><span class="ct-cat">{it.cat}</span><time datetime={it.date}>{fmt(it.date)}</time></span>
+                            <span class="ct-meta"><span class="ct-cat">{it.cat}</span>{it.date ? <time datetime={it.date}>{fmt(it.date)}</time> : it.who && <span>{it.who}</span>}</span>
                             <span class="ct-t">{it.title}</span>
                           </span>
                           <span class="ct-arrow" aria-hidden="true">→</span>
@@ -211,7 +227,7 @@ export default function Conteudos() {
 
       {/* capa que acompanha o cursor no índice (desktop) */}
       <div class={`ct-peek${hover ? ' is-on' : ''}`} ref={peek} aria-hidden="true">
-        {ARTIGOS.map((a) => <img key={a.id} src={a.cover} alt="" width="720" height="450" loading="lazy" decoding="async" class={hover?.id === a.id ? 'is-on' : ''} />)}
+        {COVERS.map((a) => <img key={a.id} src={a.cover} alt="" width="720" height="450" loading="lazy" decoding="async" class={hover?.id === a.id ? 'is-on' : ''} />)}
       </div>
     </section>
   );
